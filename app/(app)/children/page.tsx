@@ -43,7 +43,7 @@ export default async function ChildrenPage({
                 <td>{c.name}</td>
                 <td>{c.dob ? formatDob(c.dob) : '-'}</td>
                 <td>{c.notes ?? '-'}</td>
-                <td>
+                <td className="text-right">
                   <form action={deleteChild}>
                     <input type="hidden" name="id" value={c.id} />
                     <button type="submit">Remove</button>
