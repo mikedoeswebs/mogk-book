@@ -54,12 +54,12 @@ export default async function AccountPage({
             defaultValue={parent.email}
             className="w-full"
           />
-          <span className="block mt-1 text-xs text-fg-muted">
+          <span className="block mt-2 mb-4 text-xs text-fg-muted">
             Changing your email sends a confirmation link to the new address. You&apos;ll
             keep signing in with the old one until you click that link.
           </span>
         </label>
-        <label className="flex items-start gap-2 pt-2 border-t border-line">
+        <label className="flex items-start gap-2 mb-6 pt-4 border-t border-line">
           <input
             type="checkbox"
             name="weekly_emails"
