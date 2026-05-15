@@ -39,6 +39,59 @@ export async function adjustCredit(formData: FormData) {
   );
 }
 
+export async function adminDeleteChild(formData: FormData) {
+  await requireAdmin();
+  const parentId = String(formData.get('parent_id') ?? '');
+  const childId = String(formData.get('child_id') ?? '');
+  if (!parentId || !childId) {
+    redirect(`/admin/parents/${parentId}?error=Missing+fields`);
+  }
+
+  const supabase = createSupabaseAdminClient();
+
+  const { data: child } = await supabase
+    .from('children')
+    .select('id')
+    .eq('id', childId)
+    .eq('parent_id', parentId)
+    .maybeSingle();
+  if (!child) {
+    redirect(
+      `/admin/parents/${parentId}?error=${encodeURIComponent(
+        'Player does not belong to this parent',
+      )}`,
+    );
+  }
+
+  // Cascade through bookings first (FK is on delete restrict). Credits and
+  // session captain/POW pointers fall back to on delete set null, so history
+  // stays intact even after the booking row goes.
+  const { error: bookingError } = await supabase
+    .from('bookings')
+    .delete()
+    .eq('child_id', childId);
+  if (bookingError) {
+    redirect(
+      `/admin/parents/${parentId}?error=${encodeURIComponent(bookingError.message)}`,
+    );
+  }
+
+  const { error } = await supabase
+    .from('children')
+    .delete()
+    .eq('id', childId)
+    .eq('parent_id', parentId);
+  if (error) {
+    redirect(`/admin/parents/${parentId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath(`/admin/parents/${parentId}`);
+  revalidatePath('/admin/parents');
+  redirect(
+    `/admin/parents/${parentId}?success=${encodeURIComponent('Player removed')}`,
+  );
+}
+
 export async function claimGhost(formData: FormData) {
   await requireAdmin();
   const parentId = String(formData.get('parent_id') ?? '');

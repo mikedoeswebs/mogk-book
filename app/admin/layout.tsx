@@ -2,32 +2,39 @@ import { requireAdmin } from '@/lib/auth/require-user';
 import { signOut } from '@/app/login/actions';
 import { NavLink } from '@/lib/ui/NavLink';
 import { BurgerMenu } from '@/lib/ui/BurgerMenu';
+import Link from 'next/link';
+import { Logo } from '@/lib/ui/Logo';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await requireAdmin();
 
   return (
     <div>
-      <header className="border-b border-b-4 border-accent bg-surface relative">
+      <header className="border-b border-line bg-surface">
         <div className="max-w-[1140px] mx-auto px-4">
           {/* Top row: identity + account actions (desktop) or brand + burger (mobile). */}
           <div className="flex flex-wrap items-center gap-4 py-2 md:border-b md:border-line">
-            <span className="font-heading uppercase tracking-wide font-bold text-accent">Admin</span>
+            <Link href="/sessions" className="no-underline text-fg hover:text-accent">
+              <Logo size="text-lg" />
+              <span className="font-heading uppercase tracking-wide font-normal text-lg text-line mx-3">|</span>
+              <span className="font-heading uppercase tracking-wide font-normal text-lg text-accent ml-1">Admin</span>
+            </Link>
 
             {/* Desktop identity cluster. */}
-            <span
-              className="hidden md:inline ml-auto text-sm text-fg-muted truncate max-w-[260px]"
-              title={user.email}
+            <Link
+              href="/account"
+              className="hidden md:inline ml-auto text-sm text-white hover:text-accent font-heading font-bold no-underline uppercase transition-all"
+              title="My account"
             >
-              {user.email}
-            </span>
-            <NavLink href="/sessions" exact className="hidden md:inline-block! text-xs!">
+              My Account
+            </Link>
+            <NavLink href="/sessions" exact className="hidden md:inline-block! text-sm">
               Parent view
             </NavLink>
             <form action={signOut} className="hidden md:block">
               <button
                 type="submit"
-                className="bg-transparent border border-line text-fg hover:bg-surface-2 hover:border-fg-muted text-xs font-normal transition-all"
+                className="bg-transparent text-fg-muted hover:text-accent font-bold block text-sm p-0 border-0 transition-all"
               >
                 Log out
               </button>

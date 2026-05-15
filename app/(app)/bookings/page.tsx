@@ -52,6 +52,7 @@ export default async function BookingsPage({
       .from('bookings')
       .select('*, sessions(*), children(*)')
       .eq('parent_id', parent.id)
+      .neq('status', 'abandoned')
       .order('created_at', { ascending: false })
       .returns<BookingWithJoins[]>(),
     supabase

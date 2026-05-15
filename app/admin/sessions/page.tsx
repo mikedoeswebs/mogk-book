@@ -259,7 +259,7 @@ function SlotRow({
         <ul>
           {sessions.map((s) => (
             <li key={s.id}>
-              <span className="text-fg-muted">{s.age_group ?? '-'}:</span>{' '}
+              <span className="text-fg-muted mr-2">{s.age_group ?? '-'}:</span>{' '}
               <Link href={`/admin/sessions/${s.id}/edit`}>Edit</Link>
               {past && (
                 <>

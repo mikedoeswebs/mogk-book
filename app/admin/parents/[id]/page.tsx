@@ -12,6 +12,7 @@ import type {
   Session,
 } from '@/lib/db/types';
 import { adjustCredit, claimGhost } from './actions';
+import { DeleteChildButton } from './DeleteChildButton';
 
 const REASON_LABEL: Record<string, string> = {
   cancellation_refund: 'Cancellation refund',
@@ -261,6 +262,7 @@ export default async function AdminParentDetailPage({
                   <th>Name</th>
                   <th>DOB</th>
                   <th>Notes</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -269,6 +271,13 @@ export default async function AdminParentDetailPage({
                     <td>{c.name}</td>
                     <td>{c.dob ? formatDob(c.dob) : '-'}</td>
                     <td>{c.notes ?? '-'}</td>
+                    <td>
+                      <DeleteChildButton
+                        parentId={parent.id}
+                        childId={c.id}
+                        childName={c.name}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>

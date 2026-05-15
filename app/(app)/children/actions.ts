@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { requireParent } from '@/lib/auth/require-parent';
 
 export async function addChild(formData: FormData) {
@@ -35,6 +36,25 @@ export async function deleteChild(formData: FormData) {
   if (!id) redirect('/children?error=Missing+id');
 
   const supabase = await createSupabaseServerClient();
+  const admin = createSupabaseAdminClient();
+
+  // Confirm the child belongs to this parent before we touch anything.
+  const { data: child } = await supabase
+    .from('children')
+    .select('id')
+    .eq('id', id)
+    .eq('parent_id', parent.id)
+    .maybeSingle();
+  if (!child) redirect('/children?error=Player+not+found');
+
+  // Drop any abandoned (expired Stripe checkout) rows so they don't block the
+  // FK delete. They hold no payment, no credit, and no live reservation.
+  await admin
+    .from('bookings')
+    .delete()
+    .eq('child_id', id)
+    .eq('status', 'abandoned');
+
   const { error } = await supabase
     .from('children')
     .delete()
@@ -42,13 +62,19 @@ export async function deleteChild(formData: FormData) {
     .eq('parent_id', parent.id);
 
   if (error) {
-    redirect(
-      `/children?error=${encodeURIComponent(
-        error.message.includes('foreign key')
-          ? 'This player has existing bookings and can\'t be removed.'
-          : error.message,
-      )}`,
-    );
+    if (error.message.includes('foreign key')) {
+      const { count } = await admin
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('child_id', id);
+      const n = count ?? 0;
+      redirect(
+        `/children?error=${encodeURIComponent(
+          `This player has ${n} booking${n === 1 ? '' : 's'} on record and can't be removed. Contact us if you need this changed.`,
+        )}`,
+      );
+    }
+    redirect(`/children?error=${encodeURIComponent(error.message)}`);
   }
   revalidatePath('/children');
   redirect('/children');
