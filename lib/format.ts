@@ -14,6 +14,15 @@ export function formatDate(date: string): string {
   });
 }
 
+/** Long date, no weekday: "1 June 2026". */
+export function formatDateLong(date: string): string {
+  return new Date(date + 'T00:00:00').toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 export function formatTime(time: string): string {
   return time.slice(0, 5);
 }

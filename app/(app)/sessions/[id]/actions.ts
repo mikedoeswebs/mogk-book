@@ -10,6 +10,7 @@ import { applyCredit, getCreditBalance } from '@/lib/booking/credits';
 import { bookingFeeFor } from '@/lib/booking/fees';
 import { bookingNeedsApproval, sessionIsPast } from '@/lib/booking/rules';
 import { sendBookingConfirmation, sendBookingAwaitingApproval } from '@/lib/email/send';
+import { formatDateLong } from '@/lib/format';
 import type { Session, Child, Booking, Parent } from '@/lib/db/types';
 
 function getSiteUrl() {
@@ -93,7 +94,7 @@ export async function createCheckoutSession(formData: FormData) {
           currency: 'gbp',
           unit_amount: amountToCharge,
           product_data: {
-            name: `Goalkeeper coaching - ${session.date} ${session.start_time.slice(0, 5)}`,
+            name: `Club MO/GK${session.age_group ? ` (${session.age_group})` : ''} - ${formatDateLong(session.date)}`,
             description: `Coach: ${session.coach_name}. For ${child.name}.${creditLine}`,
           },
         },

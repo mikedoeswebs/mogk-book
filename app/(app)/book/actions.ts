@@ -15,7 +15,7 @@ import {
   removeRow,
   clearSelection,
 } from '@/lib/booking/selection';
-import { formatDate, formatTime } from '@/lib/format';
+import { formatDateLong } from '@/lib/format';
 import {
   sendBookingsBatchConfirmation,
   sendBookingsBatchAwaitingApproval,
@@ -152,8 +152,8 @@ export async function confirmBookings(formData: FormData) {
           currency: 'gbp',
           unit_amount: r.cardPortion,
           product_data: {
-            name: `Coaching - ${formatDate(r.session.date)} ${formatTime(r.session.start_time)}`,
-            description: `For ${child.name}${r.session.age_group ? ` | ${r.session.age_group}` : ''}${creditNote}`,
+            name: `Club MO/GK${r.session.age_group ? ` (${r.session.age_group})` : ''} - ${formatDateLong(r.session.date)}`,
+            description: `For ${child.name}${creditNote}`,
           },
         },
         quantity: 1,
