@@ -68,7 +68,7 @@ export default async function NewAdminBookingPage({
           role="tab"
           aria-selected={isGhost}
         >
-          Ghost trialist
+          Ghost
         </Link>
       </div>
 

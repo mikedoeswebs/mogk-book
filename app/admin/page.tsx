@@ -12,7 +12,11 @@ const MONTH_LABELS = [
 // sessions table that share the same (date, start_time) collapse to one
 // session here.
 type SlotRow = { id: string; date: string; start_time: string };
-type BookingAmount = { amount_pence: number; booking_fee_pence: number };
+type BookingAmount = {
+  status: 'active' | 'awaiting_approval';
+  amount_pence: number;
+  booking_fee_pence: number;
+};
 
 function countSlots(rows: SlotRow[]): number {
   const keys = new Set<string>();
@@ -70,7 +74,7 @@ export default async function AdminDashboardPage() {
     monthIds.length === 0
       ? Promise.resolve([] as BookingAmount[])
       : supabase.from('bookings')
-          .select('amount_pence, booking_fee_pence')
+          .select('status, amount_pence, booking_fee_pence')
           .in('status', ['active', 'awaiting_approval'])
           .in('session_id', monthIds)
           .returns<BookingAmount[]>()
@@ -78,7 +82,7 @@ export default async function AdminDashboardPage() {
     upcomingIds.length === 0
       ? Promise.resolve([] as BookingAmount[])
       : supabase.from('bookings')
-          .select('amount_pence, booking_fee_pence')
+          .select('status, amount_pence, booking_fee_pence')
           .in('status', ['active', 'awaiting_approval'])
           .in('session_id', upcomingIds)
           .returns<BookingAmount[]>()
@@ -87,9 +91,12 @@ export default async function AdminDashboardPage() {
 
   const monthSessionsCount = countSlots(monthSessionRows);
   const upcomingSessionsCount = countSlots(upcomingSessionRows);
-  const monthBookingCount = monthBookings.length;
+  // Booking counts use confirmed bookings only so the card numbers line up
+  // with what the linked /admin/bookings?status=active page shows. Revenue
+  // still includes awaiting_approval as a forecast.
+  const monthBookingCount = monthBookings.filter((b) => b.status === 'active').length;
   const monthRevenue = sumNetRevenue(monthBookings);
-  const upcomingBookingCount = upcomingBookings.length;
+  const upcomingBookingCount = upcomingBookings.filter((b) => b.status === 'active').length;
   const upcomingRevenue = sumNetRevenue(upcomingBookings);
 
   return (

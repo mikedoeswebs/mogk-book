@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col">
         <div className="flex-1">{children}</div>
         <footer className="border-t border-line bg-surface mt-12">
-          <div className="max-w-[1140px] mx-auto p-4 flex flex-wrap gap-4 items-center text-sm text-fg-muted">
+          <div className="max-w-[1140px] mx-auto p-4 flex flex-col md:flex-row flex-wrap gap-4 items-center text-sm text-fg-muted">
             <span className="flex items-baseline gap-2">
               <Logo size="text-sm" />
               <span>© {new Date().getFullYear()}</span>
