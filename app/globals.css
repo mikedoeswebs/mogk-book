@@ -1,26 +1,164 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+ * MO Goalkeeping — brand tokens
+ *
+ *   --bg            page background (dark navy)
+ *   --surface       panels/cards that sit on the bg
+ *   --surface-2     subtle alternate (rows, headers)
+ *   --line          borders/dividers
+ *   --fg            primary text (off-white, slightly softer than #fff)
+ *   --fg-muted      secondary text
+ *   --accent        signature lime
+ *   --accent-ink    text that sits on accent buttons
+ * ------------------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #19202f;
+  --surface: #212a3d;
+  --surface-2: #2a344a;
+  --line: #354159;
+  --fg: #f5f7fb;
+  --fg-muted: #98a4bd;
+  --accent: #ccff00;
+  --accent-hover: #d9ff3d;
+  --accent-ink: #15191f;
+
+  /* status hues tuned to read on dark navy */
+  --danger-bg: #3a1e26;
+  --danger-line: #6b2b3a;
+  --danger-fg: #ffb4c2;
+  --warn-bg: #3a311a;
+  --warn-line: #6b5a2b;
+  --warn-fg: #ffd587;
+  --ok-bg: #1c3a2c;
+  --ok-line: #2b6b4b;
+  --ok-fg: #9af0c2;
+  --info-bg: #1c2d3a;
+  --info-line: #2b526b;
+  --info-fg: #9ad3f0;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+
+  --font-body: var(--font-noto-sans), system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-heading: var(--font-montserrat), "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Everything below sits in `@layer base` so Tailwind utility classes
+   (bg-transparent, text-fg-muted, etc.) can override element defaults. */
+@layer base {
+  html, body { background: var(--bg); color: var(--fg); }
+
+  body {
+    font-family: var(--font-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    color: var(--fg);
+  }
+
+  /* H1/H2 take the slightly bolder, all-caps treatment to feel sporty without
+     going full stencil. H3+ stay normal for readability inside long content. */
+  h1, h2 {
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* Anchor or button using the accent fill always gets dark ink text, no matter
+     what the surrounding utility classes say. Uses [class~="..."] so it matches
+     the exact token (won't catch `bg-accent/15`). */
+  a[class~="bg-accent"], a[class~="bg-accent-hover"], a[class~="hover:bg-accent-hover"],
+  button[class~="bg-accent"], button[class~="bg-accent-hover"], button[class~="hover:bg-accent-hover"] {
+    color: var(--accent-ink);
+  }
+
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+
+  /* Form controls ------------------------------------------------------------ */
+  button, input, select, textarea { font: inherit; color: inherit; }
+
+  input[type="text"], input[type="email"], input[type="tel"],
+  input[type="number"], input[type="date"], input[type="time"],
+  input[type="password"],
+  select, textarea {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--fg);
+    padding: 0.5rem 0.65rem;
+    border-radius: 4px;
+    min-width: 0;
+    outline: none;
+  }
+  input::placeholder, textarea::placeholder { color: var(--fg-muted); }
+
+  input[type="checkbox"], input[type="radio"] {
+    accent-color: var(--accent);
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+
+  /* Default button = primary CTA. The few "secondary" actions in the app set
+     their own classes (bg-transparent etc.), which now correctly override these
+     defaults because Tailwind utilities live in a higher-priority layer. */
+  button {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 1px solid var(--accent);
+    font-family: var(--font-heading);
+    font-size: 0.875rem;          /* 14px */
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.55rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 80ms linear, transform 80ms linear;
+  }
+  button:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+  /* Tables ------------------------------------------------------------------- */
+  table { border-collapse: collapse; width: 100%; }
+  th, td {
+    text-align: left;
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--line);
+  }
+  th {
+    background: var(--surface-2);
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--fg-muted);
+  }
 }

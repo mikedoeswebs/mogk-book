@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# db
+/db/
+
 # production
 /build
 
