@@ -74,18 +74,76 @@ export default async function AdminParentDetailPage({
 
   if (!parent) notFound();
 
-  let ghostQuery = supabase
+  const { data: ghostRows, error: ghostError } = await supabase
     .from('bookings')
-    .select('*, sessions(*)')
+    .select('id, trialist_name, session_id, amount_pence')
     .eq('is_ghost', true)
-    .order('created_at', { ascending: false })
-    .limit(30);
-  if (ghostQ) {
-    ghostQuery = ghostQuery.ilike('trialist_name', `%${ghostQ}%`);
+    .limit(5000)
+    .returns<
+      Pick<Booking, 'id' | 'trialist_name' | 'session_id' | 'amount_pence'>[]
+    >();
+
+  const ghostSessionIds = Array.from(
+    new Set((ghostRows ?? []).map((b) => b.session_id)),
+  );
+  const { data: ghostSessions } =
+    ghostSessionIds.length > 0
+      ? await supabase
+          .from('sessions')
+          .select('id, date')
+          .in('id', ghostSessionIds)
+          .returns<Pick<Session, 'id' | 'date'>[]>()
+      : { data: [] as Pick<Session, 'id' | 'date'>[] };
+  const ghostSessionById = new Map(
+    (ghostSessions ?? []).map((s) => [s.id, s]),
+  );
+
+  type GhostGroup = {
+    key: string;
+    name: string;
+    bookingIds: string[];
+    count: number;
+    earliest: string | null;
+    latest: string | null;
+    totalPence: number;
+  };
+
+  const groupMap = new Map<string, GhostGroup>();
+  for (const b of ghostRows ?? []) {
+    const raw = (b.trialist_name ?? '').trim();
+    if (!raw) continue;
+    const key = raw.toLowerCase();
+    let g = groupMap.get(key);
+    if (!g) {
+      g = {
+        key,
+        name: raw,
+        bookingIds: [],
+        count: 0,
+        earliest: null,
+        latest: null,
+        totalPence: 0,
+      };
+      groupMap.set(key, g);
+    }
+    g.bookingIds.push(b.id);
+    g.count += 1;
+    g.totalPence += b.amount_pence;
+    const sess = ghostSessionById.get(b.session_id);
+    if (sess) {
+      if (!g.earliest || sess.date < g.earliest) g.earliest = sess.date;
+      if (!g.latest || sess.date > g.latest) g.latest = sess.date;
+    }
   }
-  const { data: ghosts } = await ghostQuery.returns<
-    (Booking & { sessions: Session })[]
-  >();
+
+  const allGroups = Array.from(groupMap.values()).sort(
+    (a, b) => b.count - a.count || a.name.localeCompare(b.name),
+  );
+  const ghostGroups = ghostQ
+    ? allGroups.filter((g) => g.key.includes(ghostQ.toLowerCase()))
+    : allGroups;
+
+  const totalGhosts = (ghostRows ?? []).length;
 
   const balancePence = (balance as number) ?? 0;
 
@@ -252,15 +310,22 @@ export default async function AdminParentDetailPage({
         <p className="text-sm text-fg-muted">
           Reassign a historic trialist booking to one of this parent&apos;s players. Past
           attendance and awards stay attached to the booking.
+          {typeof totalGhosts === 'number' && (
+            <> {totalGhosts} ghost booking{totalGhosts === 1 ? '' : 's'} on file.</>
+          )}
         </p>
 
-        <form className="flex gap-2 max-w-md">
+        <form
+          method="get"
+          action={`/admin/parents/${parent.id}`}
+          className="flex gap-2 max-w-md"
+        >
           <input
             type="search"
             name="q"
             defaultValue={ghostQ}
-            placeholder="Search trialist name"
-            className="flex-1"
+            placeholder="Filter by trialist name"
+            className="flex-1 border border-line rounded px-3 py-2"
           />
           <button type="submit">Search</button>
           {ghostQ && (
@@ -274,29 +339,40 @@ export default async function AdminParentDetailPage({
           <p className="text-sm text-fg-muted">
             This parent has no players yet — add one before claiming.
           </p>
-        ) : !ghosts || ghosts.length === 0 ? (
+        ) : ghostGroups.length === 0 ? (
           <p className="text-sm text-fg-muted">
-            {ghostQ ? 'No ghost bookings match.' : 'Enter a trialist name to search.'}
+            {ghostError
+              ? `Query error: ${ghostError.message}`
+              : ghostQ
+              ? `No ghost bookings match "${ghostQ}".`
+              : 'No ghost bookings on file.'}
           </p>
         ) : (
           <ul className="space-y-2">
-            {ghosts.map((g) => (
+            {ghostGroups.map((g) => (
               <li
-                key={g.id}
+                key={g.key}
                 className="p-3 border border-line rounded flex flex-wrap items-center gap-3"
               >
                 <span className="flex-1 min-w-0">
-                  <strong>{g.trialist_name}</strong>
+                  <strong>{g.name}</strong>
                   <span className="text-fg-muted text-sm">
-                    {' '}— {formatDate(g.sessions.date)}
-                    {g.sessions.age_group ? ` · ${g.sessions.age_group}` : ''}
+                    {' '}— {g.count} booking{g.count === 1 ? '' : 's'}
+                    {g.earliest && g.latest && (
+                      <>
+                        {' · '}
+                        {g.earliest === g.latest
+                          ? formatDate(g.earliest)
+                          : `${formatDate(g.earliest)} → ${formatDate(g.latest)}`}
+                      </>
+                    )}
                     {' · '}
-                    {formatPence(g.amount_pence)}
+                    {formatPence(g.totalPence)}
                   </span>
                 </span>
                 <form action={claimGhost} className="flex items-center gap-2">
                   <input type="hidden" name="parent_id" value={parent.id} />
-                  <input type="hidden" name="booking_id" value={g.id} />
+                  <input type="hidden" name="booking_ids" value={g.bookingIds.join(',')} />
                   <select name="child_id" required className="text-sm">
                     <option value="">Player…</option>
                     {(children ?? []).map((c) => (
@@ -305,7 +381,9 @@ export default async function AdminParentDetailPage({
                       </option>
                     ))}
                   </select>
-                  <button type="submit" className="text-sm">Claim</button>
+                  <button type="submit" className="text-sm">
+                    Claim all ({g.count})
+                  </button>
                 </form>
               </li>
             ))}

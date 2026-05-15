@@ -42,10 +42,13 @@ export async function adjustCredit(formData: FormData) {
 export async function claimGhost(formData: FormData) {
   await requireAdmin();
   const parentId = String(formData.get('parent_id') ?? '');
-  const bookingId = String(formData.get('booking_id') ?? '');
   const childId = String(formData.get('child_id') ?? '');
+  const bookingIds = String(formData.get('booking_ids') ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 
-  if (!parentId || !bookingId || !childId) {
+  if (!parentId || !childId || bookingIds.length === 0) {
     redirect(`/admin/parents/${parentId}?error=Missing+fields`);
   }
 
@@ -65,17 +68,20 @@ export async function claimGhost(formData: FormData) {
     );
   }
 
-  const { data: booking } = await supabase
+  const { data: matching, error: checkError } = await supabase
     .from('bookings')
-    .select('id, is_ghost')
-    .eq('id', bookingId)
-    .maybeSingle<{ id: string; is_ghost: boolean }>();
-  if (!booking) {
-    redirect(`/admin/parents/${parentId}?error=Booking+not+found`);
+    .select('id')
+    .in('id', bookingIds)
+    .eq('is_ghost', true);
+  if (checkError) {
+    redirect(`/admin/parents/${parentId}?error=${encodeURIComponent(checkError.message)}`);
   }
-  if (!booking!.is_ghost) {
+  const validIds = (matching ?? []).map((r) => r.id);
+  if (validIds.length === 0) {
     redirect(
-      `/admin/parents/${parentId}?error=${encodeURIComponent('Booking is not a ghost')}`,
+      `/admin/parents/${parentId}?error=${encodeURIComponent(
+        'No matching ghost bookings to claim',
+      )}`,
     );
   }
 
@@ -87,7 +93,7 @@ export async function claimGhost(formData: FormData) {
       is_ghost: false,
       trialist_name: null,
     })
-    .eq('id', bookingId);
+    .in('id', validIds);
 
   if (error) {
     redirect(`/admin/parents/${parentId}?error=${encodeURIComponent(error.message)}`);
@@ -95,6 +101,8 @@ export async function claimGhost(formData: FormData) {
   revalidatePath(`/admin/parents/${parentId}`);
   revalidatePath('/admin/bookings');
   redirect(
-    `/admin/parents/${parentId}?success=${encodeURIComponent('Ghost booking claimed')}`,
+    `/admin/parents/${parentId}?success=${encodeURIComponent(
+      `${validIds.length} booking${validIds.length === 1 ? '' : 's'} claimed`,
+    )}`,
   );
 }
