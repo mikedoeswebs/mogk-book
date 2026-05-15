@@ -22,6 +22,16 @@ const notoSans = Noto_Sans({
 export const metadata: Metadata = {
   title: 'MO Goalkeeping - Bookings',
   description: 'Book goalkeeper coaching sessions for your player.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

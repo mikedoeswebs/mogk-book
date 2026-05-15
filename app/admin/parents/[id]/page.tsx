@@ -160,7 +160,7 @@ export default async function AdminParentDetailPage({
         <h1 className="text-2xl font-bold">{parent.name}</h1>
         <p className="text-fg-muted">
           {parent.email}
-          {parent.phone ? ` · ${parent.phone}` : ''}
+          {parent.phone ? ` - ${parent.phone}` : ''}
         </p>
       </header>
 
@@ -369,13 +369,13 @@ export default async function AdminParentDetailPage({
                     {' '}— {g.count} booking{g.count === 1 ? '' : 's'}
                     {g.earliest && g.latest && (
                       <>
-                        {' · '}
+                        {' - '}
                         {g.earliest === g.latest
                           ? formatDate(g.earliest)
                           : `${formatDate(g.earliest)} → ${formatDate(g.latest)}`}
                       </>
                     )}
-                    {' · '}
+                    {' - '}
                     {formatPence(g.totalPence)}
                   </span>
                 </span>

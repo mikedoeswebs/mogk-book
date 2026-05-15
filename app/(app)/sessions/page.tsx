@@ -393,7 +393,7 @@ function DateGroupMobile({
                 <p className="text-sm whitespace-nowrap">{formatPence(s.price_pence)}</p>
               </div>
               <p className="text-xs text-fg-muted mt-0.5">
-                {s.age_group ? `${s.age_group} · ` : ''}
+                {s.age_group ? `${s.age_group} - ` : ''}
                 {availability}
               </p>
               {bookable && (
