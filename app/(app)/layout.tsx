@@ -29,16 +29,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <NavLink href="/sessions" className="hidden md:inline-block!">Sessions</NavLink>
           <NavLink href="/bookings" className="hidden md:inline-block!">My bookings</NavLink>
           <NavLink href="/children" className="hidden md:inline-block!">My players</NavLink>
-          <span className="hidden md:inline ml-auto text-sm text-fg-muted truncate max-w-[260px]" title={parent.email}>
-            {parent.email}
-          </span>
+          <Link
+            href="/account"
+            className="hidden md:inline ml-auto text-sm text-white hover:text-accent font-heading font-bold no-underline uppercase transition-all"
+            title="My account"
+          >
+            My Account
+          </Link>
           {admin && (
-            <NavLink href="/admin" className="hidden md:inline-block! text-xs!">Admin</NavLink>
+            <NavLink href="/admin" className="hidden md:inline-block! text-sm transition-all">Admin</NavLink>
           )}
           <form action={signOut} className="hidden md:block">
             <button
               type="submit"
-              className="bg-transparent border border-line text-fg hover:bg-surface-2 hover:border-fg-muted text-sm font-normal"
+              className="bg-transparent border-0 p-0 text-fg-muted hover:text-accent text-sm font-bold block tracking-normal transition-all"
             >
               Log out
             </button>
@@ -49,6 +53,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <NavLink href="/sessions">Sessions</NavLink>
             <NavLink href="/bookings">My bookings</NavLink>
             <NavLink href="/children">My players</NavLink>
+            <NavLink href="/account">My account</NavLink>
             <span className="text-sm text-fg-muted pt-2 border-t border-line">{parent.email}</span>
             {admin && <NavLink href="/admin">Admin</NavLink>}
             <form action={signOut}>

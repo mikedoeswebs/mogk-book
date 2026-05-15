@@ -34,8 +34,8 @@ export default async function OnboardingPage({
           <input type="text" name="name" required className="w-full" />
         </label>
         <label className="block">
-          <span className="block mb-1">Phone number (optional)</span>
-          <input type="tel" name="phone" className="w-full" />
+          <span className="block mb-1">Phone number</span>
+          <input type="tel" name="phone" required className="w-full" />
         </label>
         <label className="block">
           <input type="checkbox" name="consent" required /> I consent to my player&apos;s

@@ -35,7 +35,7 @@ export function NavLink({
     <Link
       href={href}
       className={
-        'font-heading uppercase font-bold tracking-wide text-sm no-underline! hover:no-underline! ' +
+        'font-heading uppercase font-bold tracking-wide text-sm no-underline! hover:no-underline! transition-all ' +
         (isActive ? 'text-accent! ' : 'text-fg! hover:text-accent! ') +
         className
       }

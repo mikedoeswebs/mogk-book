@@ -6,10 +6,11 @@ import { requireUser } from '@/lib/auth/require-user';
 
 export async function saveParentProfile(formData: FormData) {
   const name = String(formData.get('name') ?? '').trim();
-  const phone = String(formData.get('phone') ?? '').trim() || null;
+  const phone = String(formData.get('phone') ?? '').trim();
   const consent = formData.get('consent') === 'on';
 
   if (!name) redirect('/onboarding?error=Please+enter+your+name');
+  if (!phone) redirect('/onboarding?error=Please+enter+your+phone+number');
   if (!consent) redirect('/onboarding?error=Consent+is+required');
 
   const user = await requireUser();

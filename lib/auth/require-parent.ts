@@ -17,5 +17,12 @@ export async function requireParent(): Promise<Parent> {
     .maybeSingle<Parent>();
 
   if (!parent) redirect('/onboarding');
+
+  // Sync parents.email from auth after the user confirms an email change.
+  if (user.email && user.email.toLowerCase() !== parent.email.toLowerCase()) {
+    await supabase.from('parents').update({ email: user.email }).eq('id', parent.id);
+    parent.email = user.email;
+  }
+
   return parent;
 }
