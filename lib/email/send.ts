@@ -239,6 +239,57 @@ Club MO/GK`;
   await send(parent.email, subject, text, html);
 }
 
+// ---------------- Weekly digest ----------------
+
+type WeeklyDigestContext = {
+  parent: Parent;
+  sessions: Session[];
+  siteUrl: string;
+};
+
+export async function sendWeeklyDigest(ctx: WeeklyDigestContext) {
+  const { parent, sessions, siteUrl } = ctx;
+  if (sessions.length === 0) return;
+
+  const subject = `This week's coaching sessions - ${sessions.length} open`;
+
+  const lines = sessions.map((s) => {
+    const price = formatPence(s.price_pence);
+    return `• ${sessionLine(s)} - ${price}`;
+  });
+  const htmlLines = sessions
+    .map((s) => {
+      const price = formatPence(s.price_pence);
+      return `<li><strong>${escape(sessionLine(s))}</strong> - ${escape(price)}</li>`;
+    })
+    .join('');
+
+  const text = `Hi ${parent.name},
+
+Here's what's coming up over the next 7 days:
+
+${lines.join('\n')}
+
+Book in at ${siteUrl}/sessions
+
+You're getting this because you opted into weekly emails. Turn them off any time at ${siteUrl}/account.
+
+Club MO/GK`;
+
+  const html = `
+    <p>Hi ${escape(parent.name)},</p>
+    <p>Here&apos;s what&apos;s coming up over the next 7 days:</p>
+    <ul>${htmlLines}</ul>
+    <p><a href="${siteUrl}/sessions">Book in &rarr;</a></p>
+    <p style="font-size:12px;color:#666;margin-top:24px;">
+      You&apos;re getting this because you opted into weekly emails.
+      <a href="${siteUrl}/account">Turn them off</a> any time.
+    </p>
+    <p>Club MO/GK</p>
+  `;
+  await send(parent.email, subject, text, html);
+}
+
 // ---------------- Batch (bulk) bookings ----------------
 
 type BatchItem = {

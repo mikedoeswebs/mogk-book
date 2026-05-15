@@ -8,6 +8,7 @@ export async function saveParentProfile(formData: FormData) {
   const name = String(formData.get('name') ?? '').trim();
   const phone = String(formData.get('phone') ?? '').trim();
   const consent = formData.get('consent') === 'on';
+  const weeklyEmails = formData.get('weekly_emails') === 'on';
 
   if (!name) redirect('/onboarding?error=Please+enter+your+name');
   if (!phone) redirect('/onboarding?error=Please+enter+your+phone+number');
@@ -21,6 +22,7 @@ export async function saveParentProfile(formData: FormData) {
     email: user.email!,
     name,
     phone,
+    weekly_emails: weeklyEmails,
   });
 
   if (error) {

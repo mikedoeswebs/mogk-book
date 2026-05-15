@@ -40,6 +40,7 @@ export interface Parent {
   email: string;
   name: string;
   phone: string | null;
+  weekly_emails: boolean;
   created_at: string;
 }
 

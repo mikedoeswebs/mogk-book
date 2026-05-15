@@ -38,6 +38,11 @@ export default async function OnboardingPage({
           <input type="tel" name="phone" required className="w-full" />
         </label>
         <label className="block">
+          <input type="checkbox" name="weekly_emails" /> Email me a weekly summary of
+          upcoming sessions on Friday mornings. You can change this any time from
+          &quot;My account&quot;.
+        </label>
+        <label className="block">
           <input type="checkbox" name="consent" required /> I consent to my player&apos;s
           information being stored for the purposes of running these coaching sessions.
         </label>

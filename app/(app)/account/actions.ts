@@ -10,6 +10,7 @@ export async function saveAccount(formData: FormData) {
   const name = String(formData.get('name') ?? '').trim();
   const phone = String(formData.get('phone') ?? '').trim();
   const newEmail = String(formData.get('email') ?? '').trim().toLowerCase();
+  const weeklyEmails = formData.get('weekly_emails') === 'on';
 
   if (!name) redirect('/account?error=Please+enter+your+name');
   if (!phone) redirect('/account?error=Please+enter+your+phone+number');
@@ -19,7 +20,7 @@ export async function saveAccount(formData: FormData) {
 
   const { error: updateError } = await supabase
     .from('parents')
-    .update({ name, phone })
+    .update({ name, phone, weekly_emails: weeklyEmails })
     .eq('id', parent.id);
   if (updateError) {
     redirect(`/account?error=${encodeURIComponent(updateError.message)}`);

@@ -59,6 +59,17 @@ export default async function AccountPage({
             keep signing in with the old one until you click that link.
           </span>
         </label>
+        <label className="flex items-start gap-2 pt-2 border-t border-line">
+          <input
+            type="checkbox"
+            name="weekly_emails"
+            defaultChecked={parent.weekly_emails}
+            className="mt-1"
+          />
+          <span className="text-sm">
+            Email me a weekly summary of upcoming sessions on Friday mornings.
+          </span>
+        </label>
         <button type="submit">Save changes</button>
       </form>
     </div>
