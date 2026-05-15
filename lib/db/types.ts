@@ -41,6 +41,7 @@ export interface Parent {
   name: string;
   phone: string | null;
   weekly_emails: boolean;
+  terms_accepted_at: string | null;
   created_at: string;
 }
 

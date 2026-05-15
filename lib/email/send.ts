@@ -290,6 +290,51 @@ Club MO/GK`;
   await send(parent.email, subject, text, html);
 }
 
+// ---------------- Admin notifications ----------------
+
+type AdminNewRegistrationContext = {
+  parent: Pick<Parent, 'name' | 'email' | 'phone'>;
+  siteUrl: string;
+};
+
+function getAdminEmails(): string[] {
+  return (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((e) => e.trim())
+    .filter(Boolean);
+}
+
+export async function sendAdminNewRegistration(ctx: AdminNewRegistrationContext) {
+  const recipients = getAdminEmails();
+  if (recipients.length === 0) {
+    console.warn('[email] ADMIN_EMAILS not set - skipping new-registration notice');
+    return;
+  }
+
+  const { parent, siteUrl } = ctx;
+  const subject = `New parent registered: ${parent.name}`;
+  const text = `${parent.name} has just registered.
+
+Name:  ${parent.name}
+Email: ${parent.email}
+Phone: ${parent.phone ?? '(not provided)'}
+
+View parents: ${siteUrl}/admin/parents
+
+Club MO/GK`;
+  const html = `
+    <p><strong>${escape(parent.name)}</strong> has just registered.</p>
+    <table cellpadding="4" style="border-collapse:collapse;">
+      <tr><td><strong>Name</strong></td><td>${escape(parent.name)}</td></tr>
+      <tr><td><strong>Email</strong></td><td>${escape(parent.email)}</td></tr>
+      <tr><td><strong>Phone</strong></td><td>${escape(parent.phone ?? '(not provided)')}</td></tr>
+    </table>
+    <p><a href="${siteUrl}/admin/parents">View parents in admin</a></p>
+  `;
+
+  await Promise.all(recipients.map((to) => send(to, subject, text, html)));
+}
+
 // ---------------- Batch (bulk) bookings ----------------
 
 type BatchItem = {

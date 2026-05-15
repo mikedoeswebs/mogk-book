@@ -46,6 +46,11 @@ export default async function OnboardingPage({
           <input type="checkbox" name="consent" required /> I consent to my player&apos;s
           information being stored for the purposes of running these coaching sessions.
         </label>
+        <label className="block">
+          <input type="checkbox" name="terms_accepted" required /> I have read and
+          accept the <a href="/legal/terms" target="_blank" rel="noopener noreferrer">terms of service</a>
+          {' '}and <a href="/legal/privacy" target="_blank" rel="noopener noreferrer">privacy &amp; cookies notice</a>.
+        </label>
         <button type="submit">Save and continue</button>
       </form>
     </main>
