@@ -67,7 +67,7 @@ export default async function AccountPage({
             className="mt-1"
           />
           <span className="text-sm">
-            Email me a weekly summary of upcoming sessions on Friday mornings.
+            Email me a weekly reminder of upcoming sessions.
           </span>
         </label>
         <button type="submit">Save changes</button>

@@ -14,7 +14,7 @@ async function send(to: string, subject: string, text: string, html: string) {
 }
 
 function sessionLine(session: Session) {
-  return `${formatDate(session.date)} at ${formatTime(session.start_time)}–${formatTime(session.end_time)} with ${session.coach_name}${session.age_group ? ` (${session.age_group})` : ''}`;
+  return `${formatDate(session.date)} at ${formatTime(session.start_time)}–${formatTime(session.end_time)} ${session.age_group ? ` (${session.age_group})` : ''}`;
 }
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {
@@ -266,7 +266,7 @@ export async function sendWeeklyDigest(ctx: WeeklyDigestContext) {
 
   const text = `Hi ${parent.name},
 
-Here's what's coming up over the next 7 days:
+Here is your reminder of next week's sessions. Please ensure you book at least 24 hours in advance in order to secore your spot.
 
 ${lines.join('\n')}
 
@@ -278,14 +278,14 @@ Club MO/GK`;
 
   const html = `
     <p>Hi ${escape(parent.name)},</p>
-    <p>Here&apos;s what&apos;s coming up over the next 7 days:</p>
+    <p>Here is your reminder of next week&apos;s sessions. Please ensure you book at least 24 hours in advance in order to secore your spot.</p>
     <ul>${htmlLines}</ul>
-    <p><a href="${siteUrl}/sessions">Book in &rarr;</a></p>
+    <p><a href="${siteUrl}/sessions">Book now &rarr;</a></p>
     <p style="font-size:12px;color:#666;margin-top:24px;">
-      You&apos;re getting this because you opted into weekly emails.
-      <a href="${siteUrl}/account">Turn them off</a> any time.
+      You&apos;re receiving this reminder because you opted into our weekly reminder emails.
+      <a href="${siteUrl}/account">Click here</a> to opt out.
     </p>
-    <p>Club MO/GK</p>
+    <p>Kind regards,<br>Mike, Club MO/GK</p>
   `;
   await send(parent.email, subject, text, html);
 }
