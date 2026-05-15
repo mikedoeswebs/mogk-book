@@ -73,6 +73,7 @@ export interface Session {
   price_pence: number;
   status: SessionStatus;
   notes: string | null;
+  location: string;
   captain_booking_id: string | null;
   player_of_week_booking_id: string | null;
   session_report_notes: string | null;

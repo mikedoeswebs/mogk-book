@@ -72,7 +72,8 @@ export default async function SessionDetailPage({
           <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1">
             <dt className="font-bold">Date</dt><dd>{formatDate(session.date)}</dd>
             <dt className="font-bold">Time</dt><dd>{formatTime(session.start_time)}–{formatTime(session.end_time)}</dd>
-            <dt className="font-bold">Coach</dt><dd>{session.coach_name}</dd>
+            <dt className="font-bold">Location</dt><dd>{session.location}</dd>
+            <dt className="font-bold">{session.coach_name.includes(',') ? 'Coaches' : 'Coach'}</dt><dd>{session.coach_name}</dd>
             {session.age_group && (<><dt className="font-bold">Group</dt><dd>{session.age_group}</dd></>)}
             <dt className="font-bold">Price</dt><dd>{formatPence(session.price_pence)}</dd>
             <dt className="font-bold">Availability</dt><dd>{remaining > 0 ? `${remaining} of ${session.capacity} spots left` : 'Sold out'}</dd>
