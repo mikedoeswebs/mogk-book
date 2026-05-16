@@ -67,7 +67,7 @@ async function handleCheckoutCompleted(
   // many for the bulk flow).
   const { data: pending } = await supabase
     .from('bookings')
-    .select('*, sessions(*)')
+    .select('*, sessions!session_id(*)')
     .eq('stripe_checkout_session_id', checkoutSession.id)
     .eq('status', 'pending_payment')
     .returns<(Booking & { sessions: Session })[]>();
@@ -91,7 +91,7 @@ async function handleCheckoutCompleted(
   const ids = updates.map((u) => u.id);
   const { data: refreshed } = await supabase
     .from('bookings')
-    .select('*, sessions(*), children(*)')
+    .select('*, sessions!session_id(*), children(*)')
     .in('id', ids)
     .returns<(Booking & { sessions: Session; children: Child | null })[]>();
 

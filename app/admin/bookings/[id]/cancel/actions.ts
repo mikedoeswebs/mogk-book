@@ -38,7 +38,7 @@ export async function cancelAdminBooking(formData: FormData) {
 
   const { data: pre } = await admin
     .from('bookings')
-    .select('*, sessions(*), children(*), parents(*)')
+    .select('*, sessions!session_id(*), children(*), parents(*)')
     .eq('id', id)
     .maybeSingle<Row>();
 

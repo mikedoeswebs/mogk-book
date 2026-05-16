@@ -39,10 +39,13 @@ export default async function BookingsPage({
     cancelled_late?: string;
     refunded?: string;
     credit?: string;
+    p?: string;
   }>;
 }) {
   const parent = await requireParent();
   const sp = await searchParams;
+  const bookingPage = Math.max(1, Number.parseInt(sp.p ?? '1', 10) || 1);
+  const bookingOffset = (bookingPage - 1) * BOOKINGS_PAGE_SIZE;
 
   const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
@@ -50,10 +53,9 @@ export default async function BookingsPage({
   const [{ data: bookings }, { data: ledger }, balance] = await Promise.all([
     supabase
       .from('bookings')
-      .select('*, sessions(*), children(*)')
+      .select('*, sessions!session_id(*), children(*)')
       .eq('parent_id', parent.id)
       .neq('status', 'abandoned')
-      .order('created_at', { ascending: false })
       .returns<BookingWithJoins[]>(),
     supabase
       .from('credits')
@@ -64,6 +66,18 @@ export default async function BookingsPage({
       .returns<CreditEntry[]>(),
     getCreditBalance(admin, parent.id),
   ]);
+
+  const sortedBookings = (bookings ?? []).slice().sort((a, b) => {
+    const dateCmp = b.sessions.date.localeCompare(a.sessions.date);
+    if (dateCmp !== 0) return dateCmp;
+    return b.sessions.start_time.localeCompare(a.sessions.start_time);
+  });
+  const bookingsTotal = sortedBookings.length;
+  const bookingTotalPages = Math.max(1, Math.ceil(bookingsTotal / BOOKINGS_PAGE_SIZE));
+  const pagedBookings = sortedBookings.slice(
+    bookingOffset,
+    bookingOffset + BOOKINGS_PAGE_SIZE,
+  );
 
   return (
     <div className="space-y-6">
@@ -106,9 +120,10 @@ export default async function BookingsPage({
       )}
       {sp.error && <Banner kind="error">{sp.error}</Banner>}
 
-      {!bookings || bookings.length === 0 ? (
+      {bookingsTotal === 0 ? (
         <p>You don&apos;t have any bookings yet.</p>
       ) : (
+        <div className="space-y-3">
         <div className="overflow-x-auto"><table>
           <thead>
             <tr>
@@ -120,7 +135,7 @@ export default async function BookingsPage({
             </tr>
           </thead>
           <tbody>
-            {bookings.map((b) => {
+            {pagedBookings.map((b) => {
               const refundable = cancellationIssuesCredit(b.sessions);
               const cancellable = b.status === 'active' || b.status === 'awaiting_approval';
               const statusLabel =
@@ -171,6 +186,21 @@ export default async function BookingsPage({
             })}
           </tbody>
         </table></div>
+        {bookingsTotal > BOOKINGS_PAGE_SIZE && (
+          <nav
+            aria-label="Bookings pagination"
+            className="flex flex-wrap items-center justify-between gap-3"
+          >
+            <p className="text-sm text-fg-muted">
+              Showing {bookingOffset + 1}–{Math.min(bookingOffset + BOOKINGS_PAGE_SIZE, bookingsTotal)} of {bookingsTotal} · Page {bookingPage} of {bookingTotalPages}
+            </p>
+            <div className="flex gap-2 text-sm font-heading uppercase tracking-wide font-bold">
+              <BookingPageLink page={bookingPage - 1} disabled={bookingPage <= 1} label="← Prev" />
+              <BookingPageLink page={bookingPage + 1} disabled={bookingPage >= bookingTotalPages} label="Next →" />
+            </div>
+          </nav>
+        )}
+        </div>
       )}
 
       {ledger && ledger.length > 0 && (
@@ -208,11 +238,44 @@ export default async function BookingsPage({
   );
 }
 
+const BOOKINGS_PAGE_SIZE = 10;
+
 const CREDIT_REASON: Record<CreditEntry['reason'], string> = {
   cancellation_refund: 'Cancellation credit',
   booking_applied: 'Applied to booking',
   admin_adjustment: 'Admin adjustment',
 };
+
+function BookingPageLink({
+  page,
+  disabled,
+  label,
+}: {
+  page: number;
+  disabled: boolean;
+  label: string;
+}) {
+  const cls =
+    'inline-flex items-center px-3 py-1.5 rounded border text-xs no-underline! hover:no-underline! transition-colors';
+  if (disabled) {
+    return (
+      <span
+        className={`${cls} bg-surface border-line text-fg-muted opacity-50 cursor-not-allowed`}
+      >
+        {label}
+      </span>
+    );
+  }
+  const href = page > 1 ? `/bookings?p=${page}` : '/bookings';
+  return (
+    <Link
+      href={href}
+      className={`${cls} bg-surface! border-line text-fg! hover:bg-surface-2!`}
+    >
+      {label}
+    </Link>
+  );
+}
 
 function Banner({
   kind,

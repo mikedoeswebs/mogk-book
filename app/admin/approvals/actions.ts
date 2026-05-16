@@ -21,7 +21,7 @@ async function loadBooking(id: string) {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
     .from('bookings')
-    .select('*, sessions(*), children(*), parents(*)')
+    .select('*, sessions!session_id(*), children(*), parents(*)')
     .eq('id', id)
     .maybeSingle<FullBooking>();
   return { supabase, row: data };

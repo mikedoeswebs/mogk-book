@@ -27,7 +27,7 @@ export default async function EditAdminBookingPage({
 
   const { data: booking } = await supabase
     .from('bookings')
-    .select('*, sessions(*), children(*), parents(*)')
+    .select('*, sessions!session_id(*), children(*), parents(*)')
     .eq('id', id)
     .maybeSingle<Row>();
 

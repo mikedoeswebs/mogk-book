@@ -18,7 +18,7 @@ export default async function ApprovalsPage({
 
   const { data } = await supabase
     .from('bookings')
-    .select('*, sessions(*), children(*), parents(*)')
+    .select('*, sessions!session_id(*), children(*), parents(*)')
     .eq('status', 'awaiting_approval')
     .order('created_at', { ascending: true })
     .returns<Row[]>();

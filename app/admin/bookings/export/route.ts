@@ -14,7 +14,7 @@ export async function GET() {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase
     .from('bookings')
-    .select('*, sessions(*), children(*), parents(*)')
+    .select('*, sessions!session_id(*), children(*), parents(*)')
     .order('created_at', { ascending: false })
     .returns<Row[]>();
 

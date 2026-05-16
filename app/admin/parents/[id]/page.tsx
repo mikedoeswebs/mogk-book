@@ -28,17 +28,21 @@ const STATUS_LABEL: Record<Booking['status'], string> = {
   abandoned: 'Abandoned',
 };
 
+const BOOKINGS_PAGE_SIZE = 10;
+
 export default async function AdminParentDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ q?: string; error?: string; success?: string }>;
+  searchParams: Promise<{ q?: string; bp?: string; error?: string; success?: string }>;
 }) {
   await requireAdmin();
   const { id } = await params;
   const sp = await searchParams;
   const ghostQ = (sp.q ?? '').trim();
+  const bookingPage = Math.max(1, Number.parseInt(sp.bp ?? '1', 10) || 1);
+  const bookingOffset = (bookingPage - 1) * BOOKINGS_PAGE_SIZE;
 
   const supabase = createSupabaseAdminClient();
 
@@ -64,28 +68,41 @@ export default async function AdminParentDetailPage({
       .order('created_at', { ascending: false })
       .limit(50)
       .returns<CreditEntry[]>(),
+    // PostgREST can only order by an embedded column within that embed, not
+    // the outer row set, so fetch all of the parent's bookings and sort by
+    // sessions.date in JS before paginating below.
     supabase
       .from('bookings')
-      .select('*, sessions(*)')
+      .select('*, sessions!session_id(*)')
       .eq('parent_id', id)
-      .order('created_at', { ascending: false })
-      .limit(20)
       .returns<(Booking & { sessions: Session })[]>(),
   ]);
 
   if (!parent) notFound();
 
-  const { data: ghostRows, error: ghostError } = await supabase
-    .from('bookings')
-    .select('id, trialist_name, session_id, amount_pence')
-    .eq('is_ghost', true)
-    .limit(5000)
-    .returns<
-      Pick<Booking, 'id' | 'trialist_name' | 'session_id' | 'amount_pence'>[]
-    >();
+  // PostgREST caps a single response at 1000 rows regardless of .limit().
+  // Page through until the table is drained so newer ghosts past the first
+  // 1000 still appear in the trialist-group list.
+  type GhostRow = Pick<Booking, 'id' | 'trialist_name' | 'session_id' | 'amount_pence'>;
+  const ghostRows: GhostRow[] = [];
+  let ghostError: { message: string } | null = null;
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('id, trialist_name, session_id, amount_pence')
+      .eq('is_ghost', true)
+      .order('id', { ascending: true })
+      .range(offset, offset + pageSize - 1)
+      .returns<GhostRow[]>();
+    if (error) { ghostError = error; break; }
+    if (!data || data.length === 0) break;
+    ghostRows.push(...data);
+    if (data.length < pageSize) break;
+  }
 
   const ghostSessionIds = Array.from(
-    new Set((ghostRows ?? []).map((b) => b.session_id)),
+    new Set(ghostRows.map((b) => b.session_id)),
   );
   const { data: ghostSessions } =
     ghostSessionIds.length > 0
@@ -140,11 +157,29 @@ export default async function AdminParentDetailPage({
   const allGroups = Array.from(groupMap.values()).sort(
     (a, b) => b.count - a.count || a.name.localeCompare(b.name),
   );
-  const ghostGroups = ghostQ
-    ? allGroups.filter((g) => g.key.includes(ghostQ.toLowerCase()))
+  const queryTokens = normaliseTokens(ghostQ);
+  const ghostGroups = queryTokens.length > 0
+    ? allGroups.filter((g) => {
+        const nameTokens = normaliseTokens(g.name);
+        return queryTokens.every((q) =>
+          nameTokens.some((t) => t.includes(q)),
+        );
+      })
     : allGroups;
 
-  const totalGhosts = (ghostRows ?? []).length;
+  const totalGhosts = ghostRows.length;
+
+  const sortedBookings = (bookings ?? []).slice().sort((a, b) => {
+    const dateCmp = b.sessions.date.localeCompare(a.sessions.date);
+    if (dateCmp !== 0) return dateCmp;
+    return b.sessions.start_time.localeCompare(a.sessions.start_time);
+  });
+  const bookingsTotal = sortedBookings.length;
+  const bookingTotalPages = Math.max(1, Math.ceil(bookingsTotal / BOOKINGS_PAGE_SIZE));
+  const pagedBookings = sortedBookings.slice(
+    bookingOffset,
+    bookingOffset + BOOKINGS_PAGE_SIZE,
+  );
 
   const balancePence = (balance as number) ?? 0;
 
@@ -286,9 +321,9 @@ export default async function AdminParentDetailPage({
         )}
       </section>
 
-      <section className="space-y-2">
-        <h2 className="text-xl font-bold">Recent bookings</h2>
-        {(bookings ?? []).length === 0 ? (
+      <section id="bookings" className="space-y-2 scroll-mt-4">
+        <h2 className="text-xl font-bold">Bookings</h2>
+        {bookingsTotal === 0 ? (
           <p className="text-fg-muted text-sm">No bookings yet.</p>
         ) : (
           <div className="overflow-x-auto">
@@ -301,7 +336,7 @@ export default async function AdminParentDetailPage({
                 </tr>
               </thead>
               <tbody>
-                {(bookings ?? []).map((b) => (
+                {pagedBookings.map((b) => (
                   <tr key={b.id}>
                     <td>{formatDate(b.sessions.date)}</td>
                     <td>{STATUS_LABEL[b.status]}</td>
@@ -310,6 +345,32 @@ export default async function AdminParentDetailPage({
                 ))}
               </tbody>
             </table>
+            {bookingsTotal > BOOKINGS_PAGE_SIZE && (
+              <nav
+                aria-label="Bookings pagination"
+                className="flex flex-wrap items-center justify-between gap-3 pt-3"
+              >
+                <p className="text-sm text-fg-muted">
+                  Showing {bookingOffset + 1}–{Math.min(bookingOffset + BOOKINGS_PAGE_SIZE, bookingsTotal)} of {bookingsTotal} · Page {bookingPage} of {bookingTotalPages}
+                </p>
+                <div className="flex gap-2 text-sm font-heading uppercase tracking-wide font-bold">
+                  <BookingPageLink
+                    parentId={parent.id}
+                    ghostQ={ghostQ}
+                    page={bookingPage - 1}
+                    disabled={bookingPage <= 1}
+                    label="← Prev"
+                  />
+                  <BookingPageLink
+                    parentId={parent.id}
+                    ghostQ={ghostQ}
+                    page={bookingPage + 1}
+                    disabled={bookingPage >= bookingTotalPages}
+                    label="Next →"
+                  />
+                </div>
+              </nav>
+            )}
           </div>
         )}
       </section>
@@ -400,5 +461,58 @@ export default async function AdminParentDetailPage({
         )}
       </section>
     </div>
+  );
+}
+
+// Lowercase, NFKD-normalise (so accented letters collapse to their base form),
+// split on anything that isn't a letter or digit. This makes the ghost search
+// tolerant of word order, punctuation, non-breaking spaces, em-dashes, and
+// other invisible characters that can sneak in via copy-paste.
+function normaliseTokens(s: string): string[] {
+  return s
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function BookingPageLink({
+  parentId,
+  ghostQ,
+  page,
+  disabled,
+  label,
+}: {
+  parentId: string;
+  ghostQ: string;
+  page: number;
+  disabled: boolean;
+  label: string;
+}) {
+  const cls =
+    'inline-flex items-center px-3 py-1.5 rounded border text-xs no-underline! hover:no-underline! transition-colors';
+  if (disabled) {
+    return (
+      <span
+        className={`${cls} bg-surface border-line text-fg-muted opacity-50 cursor-not-allowed`}
+      >
+        {label}
+      </span>
+    );
+  }
+  const params = new URLSearchParams();
+  if (ghostQ) params.set('q', ghostQ);
+  if (page > 1) params.set('bp', String(page));
+  const qs = params.toString();
+  const href = `/admin/parents/${parentId}${qs ? `?${qs}` : ''}#bookings`;
+  return (
+    <Link
+      href={href}
+      className={`${cls} bg-surface! border-line text-fg! hover:bg-surface-2!`}
+    >
+      {label}
+    </Link>
   );
 }

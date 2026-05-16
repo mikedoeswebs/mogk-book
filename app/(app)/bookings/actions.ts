@@ -29,7 +29,7 @@ export async function cancelBooking(formData: FormData) {
   // post-cancellation actions (Stripe refund, email).
   const { data: pre } = await admin
     .from('bookings')
-    .select('*, sessions(*), children(*), parents(*)')
+    .select('*, sessions!session_id(*), children(*), parents(*)')
     .eq('id', id)
     .maybeSingle<FullBooking>();
 

@@ -3,8 +3,33 @@ import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ArrowLeft } from '@/lib/ui/Icon';
-import type { Coach, Session } from '@/lib/db/types';
+import type { Booking, Coach, Session } from '@/lib/db/types';
 import { updateSession, cancelSession, reopenSession, deleteSession } from './actions';
+
+type SessionBookingRow = {
+  id: string;
+  is_ghost: boolean;
+  trialist_name: string | null;
+  status: Booking['status'];
+  children: { name: string } | null;
+  parents: { name: string } | null;
+};
+
+const STATUS_LABEL: Record<Booking['status'], string> = {
+  pending_payment: 'Pending payment',
+  awaiting_approval: 'Awaiting approval',
+  active: 'Confirmed',
+  cancelled: 'Cancelled',
+  abandoned: 'Abandoned',
+};
+
+const STATUS_ORDER: Record<Booking['status'], number> = {
+  active: 0,
+  awaiting_approval: 1,
+  pending_payment: 2,
+  cancelled: 3,
+  abandoned: 4,
+};
 
 export default async function EditSessionPage({
   params,
@@ -18,7 +43,7 @@ export default async function EditSessionPage({
   const sp = await searchParams;
 
   const supabase = createSupabaseAdminClient();
-  const [{ data: session }, { data: coaches }, { data: linked }, { count: bookingsCount }] = await Promise.all([
+  const [{ data: session }, { data: coaches }, { data: linked }, { data: sessionBookings }] = await Promise.all([
     supabase.from('sessions').select('*').eq('id', id).maybeSingle<Session>(),
     supabase
       .from('coaches')
@@ -33,11 +58,24 @@ export default async function EditSessionPage({
       .returns<{ coach_id: string }[]>(),
     supabase
       .from('bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq('session_id', id),
+      .select('id, is_ghost, trialist_name, status, children(name), parents(name)')
+      .eq('session_id', id)
+      .returns<SessionBookingRow[]>(),
   ]);
 
   if (!session) notFound();
+
+  function playerName(b: SessionBookingRow): string {
+    if (b.is_ghost) return b.trialist_name ?? 'Trialist';
+    return b.children?.name ?? 'Unknown player';
+  }
+
+  const sortedBookings = (sessionBookings ?? []).slice().sort((a, b) => {
+    const s = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+    if (s !== 0) return s;
+    return playerName(a).localeCompare(playerName(b));
+  });
+  const bookingsCount = sortedBookings.length;
 
   const linkedSet = new Set((linked ?? []).map((r) => r.coach_id));
 
@@ -57,6 +95,9 @@ export default async function EditSessionPage({
       {sp.error && (
         <p className="p-3 bg-[var(--danger-bg)] border border-[var(--danger-line)] text-[var(--danger-fg)] rounded">{sp.error}</p>
       )}
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="space-y-4">
       <form action={updateSession} className="space-y-3 max-w-md">
         <input type="hidden" name="id" value={session.id} />
         <label className="block">
@@ -216,6 +257,62 @@ export default async function EditSessionPage({
           Delete this session permanently
         </button>
       </form>
+        </div>
+
+        <aside className="space-y-3">
+          <div className="p-4 border border-line rounded bg-surface space-y-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="text-lg font-bold">Bookings</h2>
+              <span className="text-sm text-fg-muted">
+                {bookingsCount}/{session.capacity}
+              </span>
+            </div>
+            {bookingsCount === 0 ? (
+              <p className="text-sm text-fg-muted">No bookings on this session yet.</p>
+            ) : (
+              <ul className="divide-y divide-line text-sm">
+                {sortedBookings.map((b) => (
+                  <li key={b.id} className="py-2 first:pt-0 last:pb-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-medium truncate">
+                        {playerName(b)}
+                        {b.is_ghost && (
+                          <span className="ml-1.5 text-xs text-fg-muted/70">(ghost)</span>
+                        )}
+                      </span>
+                      <Link
+                        href={`/admin/bookings/${b.id}/edit`}
+                        className="text-xs whitespace-nowrap"
+                      >
+                        Edit
+                      </Link>
+                    </div>
+                    <div className="text-xs text-fg-muted flex flex-wrap gap-x-2">
+                      <span>
+                        {b.is_ghost ? 'Ghost booking' : (b.parents?.name ?? 'Unknown parent')}
+                      </span>
+                      {b.status !== 'active' && (
+                        <span
+                          className={
+                            b.status === 'cancelled' || b.status === 'abandoned'
+                              ? 'text-[var(--danger-fg)]'
+                              : 'text-[var(--warn-fg)]'
+                          }
+                        >
+                          · {STATUS_LABEL[b.status]}
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="pt-2 border-t border-line text-xs">
+              <Link href={`/admin/bookings/new?session=${session.id}`}>+ Add booking</Link>
+            </p>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

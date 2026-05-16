@@ -212,7 +212,7 @@ async function sendBatchEmail(parent: Parent, bookingIds: string[]) {
   const admin = createSupabaseAdminClient();
   const { data: bookings } = await admin
     .from('bookings')
-    .select('*, sessions(*), children(*)')
+    .select('*, sessions!session_id(*), children(*)')
     .in('id', bookingIds)
     .returns<(Booking & { sessions: Session; children: Child | null })[]>();
   if (!bookings || bookings.length === 0) return;
