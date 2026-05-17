@@ -8,9 +8,11 @@ import {
   getCoachAttendance,
   getCaptainLeaderboard,
   getPotwLeaderboard,
+  getPlayerAttendance,
   type RangeSummary,
   type CoachAttendanceRow,
   type AwardLeaderboardRow,
+  type PlayerAttendanceRow,
 } from '@/lib/admin/analytics';
 
 const MONTH_NAMES = [
@@ -41,13 +43,14 @@ export default async function AnalyticsPage({
   const prevYearStart = `${prevYear}-01-01`;
   const prevYearEnd = `${prevYear}-12-31`;
 
-  const [thisYear, lastYear, monthly, coachRows, captainRows, potwRows] = await Promise.all([
+  const [thisYear, lastYear, monthly, coachRows, captainRows, potwRows, playerRows] = await Promise.all([
     getRangeSummary(supabase, thisYearStart, thisYearEnd),
     getRangeSummary(supabase, prevYearStart, prevYearEnd),
     getMonthlyTrend(supabase, thisYearStart, thisYearEnd),
     getCoachAttendance(supabase, thisYearStart, thisYearEnd),
     getCaptainLeaderboard(supabase, thisYearStart, thisYearEnd),
     getPotwLeaderboard(supabase, thisYearStart, thisYearEnd),
+    getPlayerAttendance(supabase, thisYearStart, thisYearEnd),
   ]);
 
   // Index monthly rows by month index (0-11) so we can render a full 12 rows.
@@ -157,8 +160,9 @@ export default async function AnalyticsPage({
           emptyHint="No POTW recorded this year."
         />
       </div>
-      <div>
+      <div className="grid lg:grid-cols-2 gap-6">
         <CoachAttendanceTable rows={coachRows} year={year} />
+        <PlayerAttendanceTable rows={playerRows} year={year} />
       </div>
 
       <p className="text-xs text-fg-muted">
@@ -187,6 +191,37 @@ function CoachAttendanceTable({ rows, year }: { rows: CoachAttendanceRow[]; year
               <tr key={r.coach_id}>
                 <td>{r.coach_name}</td>
                 <td>{r.session_count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+}
+
+function PlayerAttendanceTable({ rows, year }: { rows: PlayerAttendanceRow[]; year: number }) {
+  return (
+    <section className="space-y-2">
+      <h2 className="text-xl font-bold">Player attendance - {year}</h2>
+      {rows.length === 0 ? (
+        <p className="text-fg-muted text-sm">No attendance recorded this year.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Attendances</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.player_key}>
+                <td>
+                  {r.player_name}
+                  {r.is_ghost && <span className="ml-1.5 text-xs text-fg-muted/70">(ghost)</span>}
+                </td>
+                <td>{r.attendance_count}</td>
               </tr>
             ))}
           </tbody>

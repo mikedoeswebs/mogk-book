@@ -106,3 +106,25 @@ export async function getPotwLeaderboard(
   if (error) throw error;
   return (data ?? []) as AwardLeaderboardRow[];
 }
+
+export type PlayerAttendanceRow = {
+  player_key: string;
+  player_name: string;
+  is_ghost: boolean;
+  attendance_count: number;
+};
+
+export async function getPlayerAttendance(
+  supabase: SupabaseClient,
+  rangeStart: string,
+  rangeEnd: string,
+  limit: number | null = null,
+): Promise<PlayerAttendanceRow[]> {
+  const { data, error } = await supabase.rpc('analytics_player_attendance', {
+    p_start: rangeStart,
+    p_end: rangeEnd,
+    p_limit: limit,
+  });
+  if (error) throw error;
+  return (data ?? []) as PlayerAttendanceRow[];
+}
