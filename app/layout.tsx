@@ -47,7 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Logo size="text-sm" />
               <span>© {new Date().getFullYear()}</span>
             </span>
-            <nav className="flex flex-wrap gap-4 ml-auto">
+            <nav className="flex flex-wrap gap-4 md:ml-auto">
               <Link href="/legal/terms" className="text-fg! hover:text-accent! no-underline! hover:no-underline!">Terms</Link>
               <Link href="/legal/privacy" className="text-fg! hover:text-accent! no-underline! hover:no-underline!">Privacy &amp; cookies</Link>
               <Link href="/legal/payments" className="text-fg! hover:text-accent! no-underline! hover:no-underline!">Payment FAQs</Link>
