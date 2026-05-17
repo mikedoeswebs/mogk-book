@@ -239,6 +239,59 @@ Club MO/GK`;
   await send(parent.email, subject, text, html);
 }
 
+// ---------------- "Book the next one" prompt ----------------
+
+type UpcomingSessionPromptContext = {
+  parent: Parent;
+  sessions: Session[];
+  siteUrl: string;
+};
+
+export async function sendUpcomingSessionPrompt(ctx: UpcomingSessionPromptContext) {
+  const { parent, sessions, siteUrl } = ctx;
+  if (sessions.length === 0) return;
+
+  const subject =
+    sessions.length === 1
+      ? `Coming up: ${sessionLine(sessions[0])}`
+      : `Coming up: ${sessions.length} sessions to book`;
+
+  const lines = sessions.map(
+    (s) => `• ${sessionLine(s)} - ${formatPence(s.price_pence)}`,
+  );
+  const htmlLines = sessions
+    .map(
+      (s) =>
+        `<li><strong>${escape(sessionLine(s))}</strong> - ${escape(formatPence(s.price_pence))}</li>`,
+    )
+    .join('');
+
+  const text = `Hi ${parent.name},
+
+You came along to one of our sessions recently, so here's a heads-up about what's coming up next. Bookings need to be in at least 24 hours before the session starts to avoid going through the approval queue, so don't leave it too late.
+
+${lines.join('\n')}
+
+Book in at ${siteUrl}/sessions
+
+You're getting this because you opted into reminder emails. Turn them off any time at ${siteUrl}/account.
+
+Club MO/GK`;
+
+  const html = `
+    <p>Hi ${escape(parent.name)},</p>
+    <p>You came along to one of our sessions recently, so here&apos;s a heads-up about what&apos;s coming up next. Bookings need to be in at least 24 hours before the session starts to avoid going through the approval queue, so don&apos;t leave it too late.</p>
+    <ul>${htmlLines}</ul>
+    <p><a href="${siteUrl}/sessions">Book now &rarr;</a></p>
+    <p style="font-size:12px;color:#666;margin-top:24px;">
+      You&apos;re receiving this because you opted into our reminder emails.
+      <a href="${siteUrl}/account">Click here</a> to opt out.
+    </p>
+    <p>Kind regards,<br>Mike, Club MO/GK</p>
+  `;
+  await send(parent.email, subject, text, html);
+}
+
 // ---------------- Weekly digest ----------------
 
 type WeeklyDigestContext = {
