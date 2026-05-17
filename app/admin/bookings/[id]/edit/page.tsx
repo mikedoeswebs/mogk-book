@@ -56,7 +56,7 @@ export default async function EditAdminBookingPage({
       </dl>
 
       <p className="text-sm text-fg-muted">
-        To change the session, player, or parent, cancel this booking and create a new one.
+        To change the session or parent, cancel this booking and create a new one.
       </p>
 
       {sp.error && (
@@ -65,6 +65,19 @@ export default async function EditAdminBookingPage({
 
       <form action={updateAdminBooking} className="space-y-3 max-w-md">
         <input type="hidden" name="id" value={booking.id} />
+
+        {booking.is_ghost && (
+          <label className="block">
+            <span className="block mb-1">Player name</span>
+            <input
+              type="text"
+              name="trialist_name"
+              required
+              defaultValue={booking.trialist_name ?? ''}
+              className="w-full"
+            />
+          </label>
+        )}
 
         <div className="flex gap-3">
           <label className="block flex-1">
