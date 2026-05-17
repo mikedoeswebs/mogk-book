@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireUser } from '@/lib/auth/require-user';
 import { Logo } from '@/lib/ui/Logo';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { saveParentProfile } from './actions';
 
 export default async function OnboardingPage({
@@ -51,7 +52,7 @@ export default async function OnboardingPage({
           accept the <a href="/legal/terms" target="_blank" rel="noopener noreferrer">terms of service</a>
           {' '}and <a href="/legal/privacy" target="_blank" rel="noopener noreferrer">privacy &amp; cookies notice</a>.
         </label>
-        <button type="submit">Save and continue</button>
+        <SubmitButton pendingLabel="Saving…">Save and continue</SubmitButton>
       </form>
     </main>
   );

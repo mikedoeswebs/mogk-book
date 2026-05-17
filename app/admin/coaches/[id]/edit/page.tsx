@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ArrowLeft } from '@/lib/ui/Icon';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Coach } from '@/lib/db/types';
 import { updateCoach } from './actions';
 
@@ -54,7 +55,7 @@ export default async function EditCoachPage({
           <span className="block mb-1">Notes</span>
           <textarea name="notes" rows={3} defaultValue={coach.notes ?? ''} className="w-full" />
         </label>
-        <button type="submit">Save changes</button>
+        <SubmitButton pendingLabel="Saving…">Save changes</SubmitButton>
       </form>
     </div>
   );

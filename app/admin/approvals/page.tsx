@@ -2,6 +2,7 @@ import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { hoursUntilSession } from '@/lib/booking/rules';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Booking, Session, Parent, Child } from '@/lib/db/types';
 import { approveBooking, rejectBooking } from './actions';
 
@@ -80,12 +81,12 @@ export default async function ApprovalsPage({
                 <div className="flex gap-3 pt-2">
                   <form action={approveBooking}>
                     <input type="hidden" name="id" value={b.id} />
-                    <button type="submit">Approve</button>
+                    <SubmitButton pendingLabel="Approving…">Approve</SubmitButton>
                   </form>
                   <form action={rejectBooking} className="flex gap-2">
                     <input type="hidden" name="id" value={b.id} />
                     <input type="text" name="reason" placeholder="Reason (optional)" />
-                    <button type="submit">Reject &amp; refund</button>
+                    <SubmitButton pendingLabel="Rejecting…">Reject &amp; refund</SubmitButton>
                   </form>
                 </div>
               </li>

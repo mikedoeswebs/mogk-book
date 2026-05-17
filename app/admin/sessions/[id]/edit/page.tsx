@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ArrowLeft } from '@/lib/ui/Icon';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Booking, Coach, Session } from '@/lib/db/types';
 import { updateSession, cancelSession, reopenSession, deleteSession } from './actions';
 
@@ -191,7 +192,7 @@ export default async function EditSessionPage({
           <span className="block mb-1">Notes (shown to parents)</span>
           <textarea name="notes" rows={3} defaultValue={session.notes ?? ''} className="w-full" />
         </label>
-        <button type="submit">Save changes</button>
+        <SubmitButton pendingLabel="Saving…">Save changes</SubmitButton>
       </form>
 
       {session.status === 'open' && (
@@ -201,7 +202,7 @@ export default async function EditSessionPage({
             Cancelling closes the session to new bookings. Existing bookings are not refunded
             automatically - handle those manually.
           </p>
-          <button type="submit">Cancel this session</button>
+          <SubmitButton pendingLabel="Cancelling…">Cancel this session</SubmitButton>
         </form>
       )}
 
@@ -212,7 +213,7 @@ export default async function EditSessionPage({
             This session is currently cancelled. Reopening puts it back into the &quot;open&quot;
             state so parents can book it again.
           </p>
-          <button type="submit">Reopen this session</button>
+          <SubmitButton pendingLabel="Reopening…">Reopen this session</SubmitButton>
         </form>
       )}
 
@@ -250,12 +251,12 @@ export default async function EditSessionPage({
             className="w-full"
           />
         </label>
-        <button
-          type="submit"
+        <SubmitButton
           className="bg-[var(--danger-bg)] border border-[var(--danger-line)] text-[var(--danger-fg)] hover:bg-[var(--danger-line)]"
+          pendingLabel="Deleting…"
         >
           Delete this session permanently
-        </button>
+        </SubmitButton>
       </form>
         </div>
 

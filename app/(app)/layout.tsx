@@ -8,6 +8,7 @@ import { Logo } from '@/lib/ui/Logo';
 import { NavLink } from '@/lib/ui/NavLink';
 import { BurgerMenu } from '@/lib/ui/BurgerMenu';
 import { ArrowRight } from '@/lib/ui/Icon';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const parent = await requireParent();
@@ -41,12 +42,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <NavLink href="/admin" className="hidden md:inline-block! text-sm transition-all">Admin</NavLink>
           )}
           <form action={signOut} className="hidden md:block">
-            <button
-              type="submit"
+            <SubmitButton
               className="bg-transparent border-0 p-0 text-fg-muted hover:text-accent text-sm font-bold block tracking-normal transition-all"
             >
               Log out
-            </button>
+            </SubmitButton>
           </form>
 
           {/* Mobile: burger toggle + drawer. */}
@@ -59,12 +59,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span className="text-sm text-fg-muted pt-2 border-t border-line">{parent.email}</span>
             {admin && <NavLink href="/admin">Admin</NavLink>}
             <form action={signOut}>
-              <button
-                type="submit"
+              <SubmitButton
                 className="bg-transparent border border-line text-fg hover:bg-surface-2 hover:border-fg-muted text-xs font-normal w-full transition-all"
               >
                 Log out
-              </button>
+              </SubmitButton>
             </form>
           </BurgerMenu>
         </nav>
@@ -96,13 +95,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               )}
             </div>
             <form action={clearAllSelection}>
-              <button
-                type="submit"
+              <SubmitButton
                 className="bg-transparent border border-fg-muted text-fg-muted hover:text-fg px-4 md:px-3 py-2 text-xs transition-all"
                 aria-label="Clear selection"
               >
                 Clear
-              </button>
+              </SubmitButton>
             </form>
             <Link
               href="/book"

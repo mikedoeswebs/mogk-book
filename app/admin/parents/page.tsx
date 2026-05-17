@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { formatPence } from '@/lib/format';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Parent } from '@/lib/db/types';
 
 type Row = Parent & {
@@ -59,7 +60,7 @@ export default async function AdminParentsPage({
           placeholder="Search by name or email"
           className="flex-1"
         />
-        <button type="submit">Search</button>
+        <SubmitButton pendingLabel="Searching…">Search</SubmitButton>
         {q && (
           <Link href="/admin/parents" className="text-sm self-center">Clear</Link>
         )}

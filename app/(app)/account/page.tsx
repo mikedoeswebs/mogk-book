@@ -1,4 +1,5 @@
 import { requireParent } from '@/lib/auth/require-parent';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { saveAccount } from './actions';
 
 export default async function AccountPage({
@@ -70,7 +71,7 @@ export default async function AccountPage({
             Email me a weekly reminder of upcoming sessions.
           </span>
         </label>
-        <button type="submit">Save changes</button>
+        <SubmitButton pendingLabel="Saving…">Save changes</SubmitButton>
       </form>
     </div>
   );

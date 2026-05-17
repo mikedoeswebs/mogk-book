@@ -8,6 +8,7 @@ import {
   type HistoricSummary,
 } from '@/lib/import/historic';
 import { CoachMultiSelect } from '@/lib/ui/CoachMultiSelect';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { ArrowRight } from '@/lib/ui/Icon';
 import type { Coach } from '@/lib/db/types';
 import { runImport } from './actions';
@@ -209,7 +210,7 @@ export function ImportClient({ coaches }: { coaches: Coach[] }) {
               />
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
-                <button type="submit">Confirm import ({parsed.summary.totalRows} rows)</button>
+                <SubmitButton pendingLabel="Importing…">Confirm import ({parsed.summary.totalRows} rows)</SubmitButton>
                 <button
                   type="button"
                   onClick={() => setParsed(null)}

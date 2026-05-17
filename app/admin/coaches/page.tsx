@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Coach } from '@/lib/db/types';
 import { toggleCoachActive } from './actions';
 
@@ -64,12 +65,11 @@ export default async function CoachesPage({
                   <form action={toggleCoachActive} className="inline">
                     <input type="hidden" name="id" value={c.id} />
                     <input type="hidden" name="active" value={c.active ? '0' : '1'} />
-                    <button
-                      type="submit"
+                    <SubmitButton
                       className="bg-transparent border-0 text-fg text-xs hover:text-accent font-normal p-0 no-underline hover:underline capitalize"
                     >
                       {c.active ? 'Archive' : 'Restore'}
-                    </button>
+                    </SubmitButton>
                   </form>
                 </td>
               </tr>

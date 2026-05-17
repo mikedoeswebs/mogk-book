@@ -11,6 +11,7 @@ import type {
   Booking,
   Session,
 } from '@/lib/db/types';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { adjustCredit, claimGhost } from './actions';
 import { DeleteChildButton } from './DeleteChildButton';
 
@@ -244,7 +245,7 @@ export default async function AdminParentDetailPage({
               placeholder="e.g. Goodwill for cancelled session"
             />
           </label>
-          <button type="submit">Adjust credit</button>
+          <SubmitButton pendingLabel="Adjusting…">Adjust credit</SubmitButton>
         </form>
 
         {(entries ?? []).length > 0 && (
@@ -397,7 +398,7 @@ export default async function AdminParentDetailPage({
             placeholder="Filter by trialist name"
             className="flex-1 border border-line rounded px-3 py-2"
           />
-          <button type="submit">Search</button>
+          <SubmitButton pendingLabel="Searching…">Search</SubmitButton>
           {ghostQ && (
             <Link href={`/admin/parents/${parent.id}`} className="text-sm self-center">
               Clear
@@ -451,9 +452,9 @@ export default async function AdminParentDetailPage({
                       </option>
                     ))}
                   </select>
-                  <button type="submit" className="text-sm">
+                  <SubmitButton className="text-sm" pendingLabel="Claiming…">
                     Claim all ({g.count})
-                  </button>
+                  </SubmitButton>
                 </form>
               </li>
             ))}

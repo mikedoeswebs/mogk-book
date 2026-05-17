@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Child, Parent, Session } from '@/lib/db/types';
 import { createAdminBooking } from './actions';
 
@@ -168,7 +169,7 @@ export default async function NewAdminBookingPage({
           <textarea name="payment_note" rows={2} className="w-full" placeholder="e.g. cheque #1234" />
         </label>
 
-        <button type="submit">Create booking</button>
+        <SubmitButton pendingLabel="Creating…">Create booking</SubmitButton>
       </form>
     </div>
   );

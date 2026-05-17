@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { formatDate, formatTime } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Booking, Child, Parent, Session } from '@/lib/db/types';
 import { saveSessionReport } from './actions';
 
@@ -174,7 +175,7 @@ export default async function SessionReportPage({
             />
           </label>
 
-          <button type="submit">Save report</button>
+          <SubmitButton pendingLabel="Saving…">Save report</SubmitButton>
         </form>
       )}
     </div>

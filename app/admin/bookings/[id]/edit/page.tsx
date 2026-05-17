@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Booking, Child, Parent, Session } from '@/lib/db/types';
 import { updateAdminBooking } from './actions';
 
@@ -107,7 +108,7 @@ export default async function EditAdminBookingPage({
           />
         </label>
 
-        <button type="submit">Save changes</button>
+        <SubmitButton pendingLabel="Saving…">Save changes</SubmitButton>
       </form>
     </div>
   );

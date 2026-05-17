@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Booking, Session, Parent, Child } from '@/lib/db/types';
 import { cancelAdminBooking } from './[id]/cancel/actions';
 
@@ -281,9 +282,12 @@ export default async function AdminBookingsPage({
                               name="refund_card"
                               value={b.payment_method === 'card' && b.stripe_payment_intent_id ? '1' : '0'}
                             />
-                            <button type="submit" className="text-[var(--danger-fg)] border-0 bg-transparent p-0 capitalize no-underline! hover:underline! font-normal tracking-normal">
+                            <SubmitButton
+                              className="text-[var(--danger-fg)] border-0 bg-transparent p-0 capitalize no-underline! hover:underline! font-normal tracking-normal"
+                              pendingLabel="Cancelling…"
+                            >
                               Cancel
-                            </button>
+                            </SubmitButton>
                           </form>
                         </>
                       )}

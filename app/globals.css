@@ -81,11 +81,17 @@
   a {
     color: var(--accent);
     text-decoration: none;
+    -webkit-tap-highlight-color: color-mix(in srgb, var(--accent) 25%, transparent);
   }
   a:hover {
     color: var(--accent-hover);
     text-decoration: underline;
     text-underline-offset: 2px;
+  }
+  /* :active fires on touch even when :hover doesn't, so give every link an
+     unmissable colour change while the finger is down. */
+  a:active {
+    color: var(--accent-hover);
   }
 
   /* Anchor or button using the accent fill always gets dark ink text, no matter
@@ -140,6 +146,7 @@
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 80ms linear, transform 80ms linear;
+    -webkit-tap-highlight-color: color-mix(in srgb, var(--accent) 30%, transparent);
   }
   button:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
   button:active { transform: translateY(1px); }

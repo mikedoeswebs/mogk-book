@@ -8,6 +8,7 @@ import { bookingFeeFor } from '@/lib/booking/fees';
 import { bookingNeedsApproval, sessionIsPast } from '@/lib/booking/rules';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Child, Session } from '@/lib/db/types';
 import { countSessionInSelection } from '@/lib/booking/selection';
 import { addToSelection } from '../selection-actions';
@@ -147,11 +148,11 @@ export default async function SessionDetailPage({
                     </div>
                     <form action={addToSelection}>
                       <input type="hidden" name="session_id" value={session.id} />
-                      <button type="submit" className="w-full">
+                      <SubmitButton className="w-full" pendingLabel="Adding…">
                         {inSelection > 0
                           ? `+ Add another to selection (${inSelection} already)`
                           : '+ Add to selection'}
-                      </button>
+                      </SubmitButton>
                     </form>
                   </div>
 
@@ -174,16 +175,16 @@ export default async function SessionDetailPage({
                           ))}
                         </select>
                       </label>
-                      <button
-                        type="submit"
+                      <SubmitButton
                         className="w-full bg-transparent border border-line text-fg hover:border-accent text-sm font-normal"
+                        pendingLabel={totalToCharge === 0 ? 'Confirming…' : 'Redirecting to checkout…'}
                       >
                         {totalToCharge === 0
                           ? `Confirm booking (${formatPence(creditApplied)} credit)`
                           : creditApplied > 0
                           ? `Quick checkout (${formatPence(totalToCharge)} + ${formatPence(creditApplied)} credit)`
                           : `Quick checkout (${formatPence(totalToCharge)})`}
-                      </button>
+                      </SubmitButton>
                     </form>
                   </div>
                 </div>

@@ -1,3 +1,4 @@
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { sendMagicLink } from './actions';
 
 export function LoginForm() {
@@ -13,7 +14,7 @@ export function LoginForm() {
           className="w-full"
         />
       </label>
-      <button type="submit">Send magic link</button>
+      <SubmitButton pendingLabel="Sending…">Send magic link</SubmitButton>
     </form>
   );
 }

@@ -8,6 +8,7 @@ import {
   type CoachAssignmentSummary,
 } from '@/lib/import/coachAssignments';
 import { ArrowRight } from '@/lib/ui/Icon';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { runCoachAssignmentsImport } from './coach-actions';
 
 type Parsed = {
@@ -99,9 +100,9 @@ export function CoachAssignmentsClient() {
                 value={JSON.stringify(parsed.result.rows)}
               />
               <div className="flex flex-wrap items-center gap-3">
-                <button type="submit">
+                <SubmitButton pendingLabel="Applying…">
                   Apply coach assignments ({parsed.summary.distinctDates} date{parsed.summary.distinctDates === 1 ? '' : 's'})
-                </button>
+                </SubmitButton>
                 <button
                   type="button"
                   onClick={() => setParsed(null)}

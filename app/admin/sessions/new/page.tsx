@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ArrowLeft } from '@/lib/ui/Icon';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Coach } from '@/lib/db/types';
 import { createSession } from './actions';
 
@@ -80,7 +81,7 @@ export default async function NewSessionPage({
           <span className="block mb-1">Notes (shown to parents)</span>
           <textarea name="notes" rows={3} className="w-full" />
         </label>
-        <button type="submit">Create session</button>
+        <SubmitButton pendingLabel="Creating…">Create session</SubmitButton>
       </form>
     </div>
   );

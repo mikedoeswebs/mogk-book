@@ -6,6 +6,7 @@ import { getCreditBalance } from '@/lib/booking/credits';
 import { cancellationIssuesCredit } from '@/lib/booking/rules';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Booking, Session, Child, CreditEntry } from '@/lib/db/types';
 import { cancelBooking } from './actions';
 
@@ -171,13 +172,13 @@ export default async function BookingsPage({
                     {cancellable && (
                       <form action={cancelBooking}>
                         <input type="hidden" name="id" value={b.id} />
-                        <button type="submit">
+                        <SubmitButton pendingLabel="Cancelling…">
                           {b.status === 'awaiting_approval'
                             ? 'Cancel (full refund)'
                             : refundable
                             ? 'Cancel (credit)'
                             : 'Cancel (no refund)'}
-                        </button>
+                        </SubmitButton>
                       </form>
                     )}
                   </td>

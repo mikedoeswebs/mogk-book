@@ -1,6 +1,7 @@
 import { requireParent } from '@/lib/auth/require-parent';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { formatDob } from '@/lib/format';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Child } from '@/lib/db/types';
 import { addChild, deleteChild } from './actions';
 
@@ -46,7 +47,7 @@ export default async function ChildrenPage({
                 <td className="text-right">
                   <form action={deleteChild}>
                     <input type="hidden" name="id" value={c.id} />
-                    <button type="submit">Remove</button>
+                    <SubmitButton pendingLabel="Removing…">Remove</SubmitButton>
                   </form>
                 </td>
               </tr>
@@ -77,7 +78,7 @@ export default async function ChildrenPage({
               placeholder="Allergies, conditions, behavioural notes, anything coaches should know."
             />
           </label>
-          <button type="submit">Add player</button>
+          <SubmitButton pendingLabel="Adding…">Add player</SubmitButton>
         </form>
       </section>
     </div>

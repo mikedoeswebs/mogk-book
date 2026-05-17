@@ -8,6 +8,7 @@ import { sessionIsPast } from '@/lib/booking/rules';
 import { getSelection, type SelectionItem } from '@/lib/booking/selection';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import type { Child, Session } from '@/lib/db/types';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { confirmBookings } from './actions';
 import { ValidatedSubmit } from './ValidatedSubmit';
 
@@ -263,17 +264,17 @@ export default async function ReviewPage({
 
 function RemoveButton({ rowId }: { rowId: string }) {
   return (
-    <button
-      type="submit"
+    <SubmitButton
       name="remove_row_id"
       value={rowId}
       className="bg-transparent border-0 text-fg-muted hover:text-[var(--danger-fg)] text-sm font-normal p-0"
       aria-label="Remove from selection"
     >
       ✕ Remove
-    </button>
+    </SubmitButton>
   );
 }
+
 
 function Line({
   label,

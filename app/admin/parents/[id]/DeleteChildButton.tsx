@@ -1,5 +1,6 @@
 'use client';
 
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { adminDeleteChild } from './actions';
 
 export function DeleteChildButton({
@@ -22,9 +23,9 @@ export function DeleteChildButton({
     >
       <input type="hidden" name="parent_id" value={parentId} />
       <input type="hidden" name="child_id" value={childId} />
-      <button type="submit" className="text-sm">
+      <SubmitButton className="text-sm" pendingLabel="Deleting…">
         Delete
-      </button>
+      </SubmitButton>
     </form>
   );
 }

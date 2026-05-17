@@ -4,6 +4,7 @@ import { NavLink } from '@/lib/ui/NavLink';
 import { BurgerMenu } from '@/lib/ui/BurgerMenu';
 import Link from 'next/link';
 import { Logo } from '@/lib/ui/Logo';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await requireAdmin();
@@ -32,12 +33,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               Parent view
             </NavLink>
             <form action={signOut} className="hidden md:block">
-              <button
-                type="submit"
+              <SubmitButton
                 className="bg-transparent text-fg-muted hover:text-accent font-bold block text-sm p-0 border-0 transition-all"
               >
                 Log out
-              </button>
+              </SubmitButton>
             </form>
 
             {/* Mobile: burger + drawer with all the bits. */}
@@ -53,12 +53,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <span className="text-sm text-fg-muted pt-2 border-t border-line">{user.email}</span>
               <NavLink href="/sessions" exact>Parent view</NavLink>
               <form action={signOut}>
-                <button
-                  type="submit"
+                <SubmitButton
                   className="bg-transparent border border-line text-fg hover:bg-surface-2 hover:border-fg-muted text-sm font-normal w-full"
                 >
                   Log out
-                </button>
+                </SubmitButton>
               </form>
             </BurgerMenu>
           </div>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { ArrowLeft } from '@/lib/ui/Icon';
+import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { createCoach } from './actions';
 
 export default async function NewCoachPage({
@@ -39,7 +40,7 @@ export default async function NewCoachPage({
           <span className="block mb-1">Notes (optional)</span>
           <textarea name="notes" rows={3} className="w-full" />
         </label>
-        <button type="submit">Create coach</button>
+        <SubmitButton pendingLabel="Creating…">Create coach</SubmitButton>
       </form>
     </div>
   );
