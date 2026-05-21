@@ -61,5 +61,3 @@ export function allocateFeePence(
 export function bookingFeeFor(cardPaymentPence: number): number {
   return calculateBookingFeePence(cardPaymentPence);
 }
-
-export const STRIPE_BOOKING_FEE_PENCE = 50; // kept for places that display "around 50p"

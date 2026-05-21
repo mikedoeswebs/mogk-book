@@ -72,7 +72,7 @@ export default async function HelpPage() {
 
       <h2 id="fees-credit" className="text-2xl font-bold mt-8">Booking fees and account credit</h2>
       <p>
-        Card payments add a small booking fee that covers what Stripe charges us to process the payment. It works out at <strong>1.5% of the card total + 20p</strong>, so a single £20 session is 50p. Because we&apos;re billed per transaction not per session, booking five at once is one fee of about £1.70 rather than five × 50p. The fee is shown before you confirm, both in the review screen and on Stripe&apos;s page.
+        Card payments add a small booking fee that covers what Stripe charges us to process the payment. It works out at roughly <strong>1.5% of the card total + 20p</strong>, so a single £20 session is around 50p. Because we&apos;re billed per transaction not per session, booking five at once is one fee of about £1.70 rather than five separate fees. The fee is shown before you confirm, both in the review screen and on Stripe&apos;s page.
       </p>
       <p>
         The booking fee is <strong>non-refundable</strong>{' '}because Stripe doesn&apos;t return their fee to us when a payment is refunded.
@@ -91,7 +91,7 @@ export default async function HelpPage() {
         you commit: credit, no credit, or full refund (for late bookings still awaiting approval).
       </p>
       <ul className="list-disc pl-6 space-y-1">
-        <li><strong>24 hours or more before the session.</strong> The session price is added to your credit balance, which will be applied to your next booking. The 50p booking fee isn&apos;t returned.</li>
+        <li><strong>24 hours or more before the session.</strong> The session price is added to your credit balance, which will be applied to your next booking. The booking fee isn&apos;t returned.</li>
         <li><strong>Within 24 hours of the session.</strong> The cancellation is recorded so the coach knows your player won&apos;t be there, but no credit is issued; the slot was already held.</li>
         <li><strong>Awaiting approval (late booking we haven&apos;t reviewed yet).</strong> You&apos;re refunded in full to your card.</li>
       </ul>

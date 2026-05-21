@@ -7,7 +7,7 @@ export default function PrivacyPage() {
     <article className="space-y-4">
 
       <h1 className="text-3xl font-bold">Privacy &amp; cookies notice</h1>
-      <p className="text-sm text-fg-muted">Last updated: May 2026</p>
+      <p className="text-sm text-fg-muted">Last updated: 21 May 2026</p>
 
       <h2 className="text-xl font-bold mt-6">Who we are</h2>
       <p>

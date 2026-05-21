@@ -7,7 +7,7 @@ export default function TermsPage() {
     <article className="prose-like space-y-4">
 
       <h1 className="text-3xl font-bold">Terms of service</h1>
-      <p className="text-sm text-fg-muted">Last updated: May 2026</p>
+      <p className="text-sm text-fg-muted">Last updated: 21 May 2026</p>
 
       <h2 className="text-xl font-bold mt-6">1. About us</h2>
       <p>
@@ -49,16 +49,16 @@ export default function TermsPage() {
 
       <h2 className="text-xl font-bold mt-6">5. Pricing, fees and refunds</h2>
       <p>
-        Each session price is shown before you book. Card payments add a 50p booking fee that
-        covers our payment processing costs. This fee is <strong>non-refundable</strong>, as our
-        card processor doesn&apos;t refund their fee to us either. Full payment details are in
-        our <a href="/legal/payments">Payment FAQs</a>.
+        Each session price is shown before you book. Card payments add a small booking fee
+        (roughly 1.5% of the total + 20p) that covers our payment processing costs. This fee
+        is <strong>non-refundable</strong>, as our card processor doesn&apos;t refund their fee
+        to us either. Full payment details are in our <a href="/legal/payments">Payment FAQs</a>.
       </p>
       <p>
         Our cancellation policy:
       </p>
       <ul className="list-disc pl-6 space-y-1">
-        <li>Cancel <strong>at least 24 hours</strong> before a session and we&apos;ll credit your account for the session price (the 50p fee, where paid, isn&apos;t returned).</li>
+        <li>Cancel <strong>at least 24 hours</strong> before a session and we&apos;ll credit your account for the session price (the booking fee, where paid, isn&apos;t returned).</li>
         <li>Cancel <strong>within 24 hours</strong> and no credit is given - the slot has already been allocated.</li>
         <li>If we reject a late booking that needed approval, you&apos;ll receive a card refund for the session price.</li>
         <li>If we cancel a session ourselves, you&apos;ll get a full credit including the booking fee.</li>

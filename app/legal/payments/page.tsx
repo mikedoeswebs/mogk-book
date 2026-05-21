@@ -6,7 +6,7 @@ export default function PaymentsFaqPage() {
   return (
     <article className="space-y-4">
       <h1 className="text-3xl font-bold">Payment FAQs</h1>
-      <p className="text-sm text-fg-muted">Last updated: May 2026</p>
+      <p className="text-sm text-fg-muted">Last updated: 21 May 2026</p>
 
       <p>
         We try to keep payments straightforward. Below are the questions we get most often.
@@ -23,9 +23,9 @@ export default function PaymentsFaqPage() {
       <h2 className="text-xl font-bold mt-6">What&apos;s the booking fee?</h2>
       <p>
         Each card payment includes a small booking fee that covers the cost Stripe charges us to
-        process the payment. It&apos;s calculated as <strong>1.5% of the card total + 20p</strong> -
-        so a single £20 session is 50p, and the fee scales naturally if you book several at once.
-        Because Stripe doesn&apos;t return their fee to us on a refund, the booking fee is{' '}
+        process the payment. It works out at roughly <strong>1.5% of the card total + 20p</strong> -
+        so a single £20 session is around 50p, and the fee scales naturally if you book several at
+        once. Because Stripe doesn&apos;t return their fee to us on a refund, the booking fee is{' '}
         <strong>non-refundable</strong>.
       </p>
       <p>
@@ -43,7 +43,7 @@ export default function PaymentsFaqPage() {
         <li>
           <strong>24 hours or more before the session:</strong> the session price is added back
           to your account as credit, which is automatically applied to your next booking. The
-          50p booking fee isn&apos;t returned.
+          booking fee isn&apos;t returned.
         </li>
         <li>
           <strong>Less than 24 hours before:</strong> the cancellation is recorded so the coach
@@ -59,7 +59,7 @@ export default function PaymentsFaqPage() {
       <p>
         Bookings made within 24 hours of a session need admin approval before they&apos;re
         confirmed. If we can&apos;t accept the booking, we&apos;ll refund the session price back
-        to your card and return any credit you used. The 50p booking fee isn&apos;t refunded -
+        to your card and return any credit you used. The booking fee isn&apos;t refunded -
         we&apos;ve still paid Stripe to process the original payment.
       </p>
 
@@ -78,7 +78,7 @@ export default function PaymentsFaqPage() {
       <p>
         Cash, cheque, bank transfer, and free trial bookings are handled by our admin team
         in person rather than through the website. Talk to your coach or email{' '}
-        mike@mogoalkeeping.co.uk and we&apos;ll arrange it. The 50p booking fee doesn&apos;t
+        mike@mogoalkeeping.co.uk and we&apos;ll arrange it. The booking fee doesn&apos;t
         apply to non-card payments.
       </p>
 
