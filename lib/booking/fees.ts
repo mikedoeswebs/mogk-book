@@ -2,16 +2,22 @@
  * Stripe (UK card) costs us 1.5% + 20p per *transaction* - not per booking.
  * We pass that through transparently as a single "booking fee" line item.
  *
- * Single £20 session ⇒ 0.015 × 2000 + 20 = 50p, identical to the old flat fee.
- * Five £20 sessions in one go ⇒ 0.015 × 10 000 + 20 = 170p (£1.70), which
- * matches what Stripe actually bills us.
+ * Grossed up so the fee covers Stripe's cut on the total charge (session + fee),
+ * not just the session price - otherwise we lose 1p per transaction because
+ * Stripe takes 1.5% of what the parent actually pays.
+ *
+ * Single £12 session ⇒ ceil(1220 / 0.985) − 1200 = 39p, parent pays £12.39,
+ * Stripe takes 39p, we net £12 exactly.
  */
 const STRIPE_PERCENT = 0.015;
 const STRIPE_FIXED_PENCE = 20;
 
 export function calculateBookingFeePence(cardPaymentPence: number): number {
   if (cardPaymentPence <= 0) return 0;
-  return Math.ceil(cardPaymentPence * STRIPE_PERCENT) + STRIPE_FIXED_PENCE;
+  const gross = Math.ceil(
+    (cardPaymentPence + STRIPE_FIXED_PENCE) / (1 - STRIPE_PERCENT),
+  );
+  return gross - cardPaymentPence;
 }
 
 /**
