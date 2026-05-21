@@ -8,7 +8,7 @@ import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Booking, Session, Child, CreditEntry } from '@/lib/db/types';
-import { cancelBooking } from './actions';
+import { cancelBooking, dismissPendingBooking } from './actions';
 
 type BookingWithJoins = Booking & {
   sessions: Session;
@@ -40,6 +40,7 @@ export default async function BookingsPage({
     cancelled_late?: string;
     refunded?: string;
     credit?: string;
+    dismissed?: string;
     p?: string;
   }>;
 }) {
@@ -119,6 +120,11 @@ export default async function BookingsPage({
           Cancellation confirmed and your payment has been refunded to your card.
         </Banner>
       )}
+      {sp.dismissed && (
+        <Banner kind="info">
+          Unpaid booking removed. If you&apos;d still like to book, start again from Sessions.
+        </Banner>
+      )}
       {sp.error && <Banner kind="error">{sp.error}</Banner>}
 
       {bookingsTotal === 0 ? (
@@ -179,6 +185,12 @@ export default async function BookingsPage({
                             ? 'Cancel (credit)'
                             : 'Cancel (no refund)'}
                         </SubmitButton>
+                      </form>
+                    )}
+                    {b.status === 'pending_payment' && (
+                      <form action={dismissPendingBooking}>
+                        <input type="hidden" name="id" value={b.id} />
+                        <SubmitButton pendingLabel="Dismissing…">Dismiss</SubmitButton>
                       </form>
                     )}
                   </td>

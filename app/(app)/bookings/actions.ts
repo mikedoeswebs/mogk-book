@@ -18,6 +18,59 @@ type FullBooking = Booking & {
   parents: Parent;
 };
 
+export async function dismissPendingBooking(formData: FormData) {
+  const parent = await requireParent();
+  const id = String(formData.get('id') ?? '');
+  if (!id) redirect('/bookings?error=Missing+booking+id');
+
+  const admin = createSupabaseAdminClient();
+
+  const { data: booking } = await admin
+    .from('bookings')
+    .select('id, parent_id, status, credit_applied_pence, stripe_checkout_session_id')
+    .eq('id', id)
+    .maybeSingle<
+      Pick<
+        Booking,
+        'id' | 'parent_id' | 'status' | 'credit_applied_pence' | 'stripe_checkout_session_id'
+      >
+    >();
+
+  if (!booking) redirect('/bookings?error=Booking+not+found');
+  if (booking.parent_id !== parent.id) redirect('/bookings?error=Not+your+booking');
+  if (booking.status !== 'pending_payment') {
+    redirect('/bookings?error=Only+unpaid+bookings+can+be+dismissed');
+  }
+
+  // Expire the Stripe checkout session so a late payment can't flip this row
+  // back to active after dismissal. The session may already be expired or
+  // completed - swallow the error either way.
+  if (booking.stripe_checkout_session_id) {
+    try {
+      await getStripe().checkout.sessions.expire(booking.stripe_checkout_session_id);
+    } catch (err) {
+      console.error('Stripe checkout expire failed', err);
+    }
+  }
+
+  await admin.from('bookings').update({ status: 'abandoned' }).eq('id', id);
+
+  // Reverse any credit applied at checkout - mirrors handleCheckoutExpired in
+  // the webhook so the ledger stays balanced.
+  if (booking.credit_applied_pence > 0) {
+    await admin.from('credits').insert({
+      parent_id: parent.id,
+      amount_pence: booking.credit_applied_pence,
+      reason: 'admin_adjustment',
+      booking_id: booking.id,
+      note: 'Reversed: dismissed by parent',
+    });
+  }
+
+  revalidatePath('/bookings');
+  redirect('/bookings?dismissed=1');
+}
+
 export async function cancelBooking(formData: FormData) {
   const parent = await requireParent();
   const id = String(formData.get('id') ?? '');
