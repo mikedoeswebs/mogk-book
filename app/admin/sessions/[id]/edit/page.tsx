@@ -77,9 +77,18 @@ export default async function EditSessionPage({
     return playerName(a).localeCompare(playerName(b));
   });
   const bookingsCount = sortedBookings.length;
+  // Spots filled, matching get_session_availability and the Sessions list:
+  // only held/confirmed bookings occupy capacity (cancelled and abandoned
+  // free the place back up).
+  const takenCount = sortedBookings.filter(
+    (b) =>
+      b.status === 'active' ||
+      b.status === 'awaiting_approval' ||
+      b.status === 'pending_payment',
+  ).length;
   // The sidebar list only needs confirmed and cancelled bookings — abandoned
   // and in-progress purchases are noise here (they live in the main Bookings
-  // list and the Approvals queue). The counts above stay over all statuses.
+  // list and the Approvals queue).
   const visibleBookings = sortedBookings.filter(
     (b) => b.status === 'active' || b.status === 'cancelled',
   );
@@ -271,7 +280,7 @@ export default async function EditSessionPage({
             <div className="flex items-baseline justify-between gap-2">
               <h2 className="text-lg font-bold">Bookings</h2>
               <span className="text-sm text-fg-muted">
-                {bookingsCount}/{session.capacity}
+                {takenCount}/{session.capacity}
               </span>
             </div>
             {visibleBookings.length === 0 ? (

@@ -1,0 +1,22 @@
+name: Pre-session roster email
+
+# Vercel Hobby can't run a cron more than once a day, so we poll the
+# pre-session endpoint from GitHub Actions instead. The endpoint itself decides
+# which sessions are ~3 hours out and emails the coach once each.
+on:
+  schedule:
+    # Every 15 minutes. Cron is in UTC; the endpoint works in real time so the
+    # timezone doesn't matter. GitHub may delay scheduled runs under load — the
+    # endpoint's 30-minute window absorbs a late fire.
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {} # lets you trigger a run by hand from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit the pre-session endpoint
+        run: |
+          curl -fsS --retry 3 --retry-delay 5 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.SITE_URL }}/api/cron/pre-session"
