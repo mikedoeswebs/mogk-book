@@ -221,7 +221,7 @@ export default async function AdminBookingsPage({
         </p>
       ) : (
         <>
-          <div className="overflow-x-auto"><table className="min-w-[40rem]">
+          <div className="overflow-x-auto"><table className="text-sm md:text-base min-w-[40rem]">
             <thead>
               <tr>
                 <th>Session</th>
@@ -249,7 +249,7 @@ export default async function AdminBookingsPage({
                 const cancellable = b.status === 'active' || b.status === 'awaiting_approval' || b.status === 'pending_payment';
                 return (
                   <tr key={b.id}>
-                    <td>
+                    <td className="whitespace-nowrap">
                       {formatDate(b.sessions.date)} {formatTime(b.sessions.start_time)}<br />
                       <span className="text-sm text-fg-muted">{b.sessions.coach_name}</span>
                     </td>
@@ -268,7 +268,7 @@ export default async function AdminBookingsPage({
                     </td>
                     <td>{methodLabel}</td>
                     <td>{STATUS[b.status]}</td>
-                    <td className="text-sm">{new Date(b.created_at).toLocaleString('en-GB')}</td>
+                    <td className="text-sm whitespace-nowrap">{new Date(b.created_at).toLocaleString('en-GB')}</td>
                     <td className="text-sm">
                       <Link href={`/admin/bookings/${b.id}/edit`}>Edit</Link>
                       {cancellable && (

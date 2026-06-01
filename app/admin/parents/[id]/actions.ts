@@ -92,6 +92,43 @@ export async function adminDeleteChild(formData: FormData) {
   );
 }
 
+export async function deleteParent(formData: FormData) {
+  await requireAdmin();
+  const parentId = String(formData.get('parent_id') ?? '');
+  if (!parentId) redirect('/admin/parents?error=Missing+parent');
+
+  const supabase = createSupabaseAdminClient();
+
+  const { data: parent } = await supabase
+    .from('parents')
+    .select('id')
+    .eq('id', parentId)
+    .maybeSingle();
+  if (!parent) redirect('/admin/parents?error=Parent+not+found');
+
+  // bookings.parent_id is "on delete restrict", so clear the parent's bookings
+  // first. Session captain/POW pointers and credits.booking_id fall to "set
+  // null", keeping the rest of the history intact.
+  const { error: bookingError } = await supabase
+    .from('bookings')
+    .delete()
+    .eq('parent_id', parentId);
+  if (bookingError) {
+    redirect(`/admin/parents/${parentId}?error=${encodeURIComponent(bookingError.message)}`);
+  }
+
+  // parents.id IS the auth user id (FK to auth.users with cascade), so deleting
+  // the auth user removes the login and cascades to the parent row, their
+  // children, and credit ledger - a full erasure for GDPR removal requests.
+  const { error } = await supabase.auth.admin.deleteUser(parentId);
+  if (error) {
+    redirect(`/admin/parents/${parentId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath('/admin/parents');
+  redirect(`/admin/parents?success=${encodeURIComponent('Parent and all their data removed')}`);
+}
+
 export async function claimGhost(formData: FormData) {
   await requireAdmin();
   const parentId = String(formData.get('parent_id') ?? '');

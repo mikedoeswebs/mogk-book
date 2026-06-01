@@ -8,6 +8,7 @@ import {
   sendCancellationCredit,
   sendCancellationNoRefund,
   sendCancellationRefunded,
+  sendAdminCancellation,
 } from '@/lib/email/send';
 import { getStripe } from '@/lib/stripe/client';
 import type { Booking, Session, Parent, Child } from '@/lib/db/types';
@@ -141,6 +142,20 @@ export async function cancelBooking(formData: FormData) {
     }
   } catch (err) {
     console.error('Cancellation email failed', err);
+  }
+
+  // Let the admin know a parent cancelled.
+  try {
+    await sendAdminCancellation({
+      parent: pre.parents,
+      child: pre.children,
+      session: pre.sessions,
+      outcome: outcome ?? null,
+      creditIssuedPence: creditPence,
+      siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
+    });
+  } catch (err) {
+    console.error('Admin cancellation notice failed', err);
   }
 
   revalidatePath('/bookings');

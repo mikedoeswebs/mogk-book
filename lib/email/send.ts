@@ -471,6 +471,153 @@ Club MO/GK`;
   await send(parent.email, subject, text, html);
 }
 
+// ---------------- Admin booking / cancellation / roster notices ----------------
+
+type AdminBookingContext = {
+  parent: Pick<Parent, 'name' | 'email'>;
+  items: BatchItem[];
+  siteUrl: string;
+};
+
+export async function sendAdminBookingNotification(ctx: AdminBookingContext) {
+  const recipients = getAdminEmails();
+  if (recipients.length === 0) {
+    console.warn('[email] ADMIN_EMAILS not set - skipping booking notice');
+    return;
+  }
+
+  const { parent, items, siteUrl } = ctx;
+  const count = items.length;
+  const anyAwaiting = items.some((i) => i.booking.status === 'awaiting_approval');
+  const subject = `New booking${count === 1 ? '' : 's'}: ${parent.name}${anyAwaiting ? ' (needs approval)' : ''}`;
+  const rendered = renderBatchLines(items);
+
+  const text = `${parent.name} (${parent.email}) just booked ${count} session${count === 1 ? '' : 's'}:
+
+${rendered.text}
+${anyAwaiting ? '\nOne or more bookings were made within 24 hours of the session and need approval.\n' : ''}
+View bookings: ${siteUrl}/admin/bookings
+
+Club MO/GK`;
+  const html = `
+    <p><strong>${escape(parent.name)}</strong> (${escape(parent.email)}) just booked <strong>${count}</strong> session${count === 1 ? '' : 's'}:</p>
+    ${rendered.html}
+    ${anyAwaiting ? '<p>One or more bookings were made within 24 hours of the session and need approval.</p>' : ''}
+    <p><a href="${siteUrl}/admin/bookings">View bookings in admin</a></p>
+  `;
+
+  await Promise.all(recipients.map((to) => send(to, subject, text, html)));
+}
+
+type AdminCancellationContext = {
+  parent: Pick<Parent, 'name' | 'email'>;
+  child: Child | null;
+  session: Session;
+  outcome: 'credit_issued' | 'no_refund_late' | 'refunded_pre_service' | null;
+  creditIssuedPence?: number;
+  siteUrl: string;
+};
+
+export async function sendAdminCancellation(ctx: AdminCancellationContext) {
+  const recipients = getAdminEmails();
+  if (recipients.length === 0) {
+    console.warn('[email] ADMIN_EMAILS not set - skipping cancellation notice');
+    return;
+  }
+
+  const { parent, child, session, outcome, creditIssuedPence = 0, siteUrl } = ctx;
+  const who = child?.name ?? 'a player';
+  const outcomeLabel =
+    outcome === 'credit_issued'
+      ? `Account credit issued: ${formatPence(creditIssuedPence)}`
+      : outcome === 'refunded_pre_service'
+        ? 'Refunded (booking was awaiting approval)'
+        : outcome === 'no_refund_late'
+          ? 'Inside 24 hours - no credit issued'
+          : 'Cancelled';
+  const subject = `Cancellation: ${who} - ${formatDate(session.date)}`;
+
+  const text = `${parent.name} (${parent.email}) cancelled a booking.
+
+Player:  ${who}
+Session: ${sessionLine(session)}
+Outcome: ${outcomeLabel}
+
+View bookings: ${siteUrl}/admin/bookings
+
+Club MO/GK`;
+  const html = `
+    <p><strong>${escape(parent.name)}</strong> (${escape(parent.email)}) cancelled a booking.</p>
+    <table cellpadding="4" style="border-collapse:collapse;">
+      <tr><td><strong>Player</strong></td><td>${escape(who)}</td></tr>
+      <tr><td><strong>Session</strong></td><td>${escape(sessionLine(session))}</td></tr>
+      <tr><td><strong>Outcome</strong></td><td>${escape(outcomeLabel)}</td></tr>
+    </table>
+    <p><a href="${siteUrl}/admin/bookings">View bookings in admin</a></p>
+  `;
+
+  await Promise.all(recipients.map((to) => send(to, subject, text, html)));
+}
+
+type RosterGroup = {
+  ageGroup: string | null;
+  players: string[];
+};
+
+type AdminSessionRosterContext = {
+  date: string;
+  startTime: string;
+  endTime: string;
+  groups: RosterGroup[];
+  siteUrl: string;
+};
+
+export async function sendAdminSessionRoster(ctx: AdminSessionRosterContext) {
+  const recipients = getAdminEmails();
+  if (recipients.length === 0) {
+    console.warn('[email] ADMIN_EMAILS not set - skipping session roster');
+    return;
+  }
+
+  const { date, startTime, endTime, groups, siteUrl } = ctx;
+  const total = groups.reduce((n, g) => n + g.players.length, 0);
+  const when = `${formatDate(date)} at ${formatTime(startTime)}–${formatTime(endTime)}`;
+  const subject = `Roster ${formatTime(startTime)} - ${total} player${total === 1 ? '' : 's'}`;
+
+  const textGroups = groups
+    .map((g) => {
+      const head = `${g.ageGroup ?? 'No group'} (${g.players.length}):`;
+      const list = g.players.length
+        ? g.players.map((p) => `  - ${p}`).join('\n')
+        : '  (none)';
+      return `${head}\n${list}`;
+    })
+    .join('\n\n');
+  const htmlGroups = groups
+    .map((g) => {
+      const items = g.players.length
+        ? g.players.map((p) => `<li>${escape(p)}</li>`).join('')
+        : '<li><em>None yet</em></li>';
+      return `<p><strong>${escape(g.ageGroup ?? 'No group')}</strong> (${g.players.length})</p><ul>${items}</ul>`;
+    })
+    .join('');
+
+  const text = `Your session in about 3 hours: ${when}
+
+${textGroups}
+
+View sessions: ${siteUrl}/admin/sessions
+
+Club MO/GK`;
+  const html = `
+    <p>Your session in about 3 hours: <strong>${escape(when)}</strong></p>
+    ${htmlGroups}
+    <p><a href="${siteUrl}/admin/sessions">View sessions in admin</a></p>
+  `;
+
+  await Promise.all(recipients.map((to) => send(to, subject, text, html)));
+}
+
 function escape(s: string): string {
   return s
     .replace(/&/g, '&amp;')

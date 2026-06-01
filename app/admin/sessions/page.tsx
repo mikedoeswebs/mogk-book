@@ -178,12 +178,12 @@ export default async function AdminSessionsPage({
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Time</th>
-                  <th>Coach</th>
-                  <th>Groups</th>
-                  <th>Price</th>
-                  <th>Bookings</th>
-                  <th>Status</th>
+                  <th className="hidden sm:table-cell">Time</th>
+                  <th className="hidden sm:table-cell">Coach</th>
+                  <th className="hidden sm:table-cell">Groups</th>
+                  <th className="hidden sm:table-cell">Price</th>
+                  <th className="hidden sm:table-cell">Bookings</th>
+                  <th className="hidden sm:table-cell">Status</th>
                   <th></th>
                 </tr>
               </thead>
@@ -230,19 +230,19 @@ function SlotRow({
   return (
     <tr className={past ? 'opacity-70' : ''}>
       <td className="whitespace-nowrap align-top">{dateLabel}</td>
-      <td className="whitespace-nowrap align-top">{timeLabel}</td>
-      <td className="align-top">
+      <td className="hidden sm:table-cell whitespace-nowrap align-top">{timeLabel}</td>
+      <td className="hidden sm:table-cell align-top">
         {coaches.map((c) => <div key={c}>{c}</div>)}
       </td>
-      <td className="align-top">
+      <td className="hidden sm:table-cell align-top">
         {sessions.map((s) => (
           <div key={s.id}>{s.age_group ?? '-'}</div>
         ))}
       </td>
-      <td className="align-top">
+      <td className="hidden sm:table-cell align-top">
         {prices.map((p) => <div key={p}>{formatPence(p)}</div>)}
       </td>
-      <td className="align-top">
+      <td className="hidden sm:table-cell align-top">
         {sessions.map((s) => {
           const taken = takenBySession.get(s.id) ?? 0;
           return (
@@ -252,7 +252,7 @@ function SlotRow({
           );
         })}
       </td>
-      <td className="align-top capitalize">
+      <td className="hidden sm:table-cell align-top capitalize">
         {statuses.map((st) => <div key={st}>{st}</div>)}
       </td>
       <td className="whitespace-nowrap text-right align-top">

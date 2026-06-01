@@ -77,6 +77,12 @@ export default async function EditSessionPage({
     return playerName(a).localeCompare(playerName(b));
   });
   const bookingsCount = sortedBookings.length;
+  // The sidebar list only needs confirmed and cancelled bookings — abandoned
+  // and in-progress purchases are noise here (they live in the main Bookings
+  // list and the Approvals queue). The counts above stay over all statuses.
+  const visibleBookings = sortedBookings.filter(
+    (b) => b.status === 'active' || b.status === 'cancelled',
+  );
 
   const linkedSet = new Set((linked ?? []).map((r) => r.coach_id));
 
@@ -268,11 +274,11 @@ export default async function EditSessionPage({
                 {bookingsCount}/{session.capacity}
               </span>
             </div>
-            {bookingsCount === 0 ? (
-              <p className="text-sm text-fg-muted">No bookings on this session yet.</p>
+            {visibleBookings.length === 0 ? (
+              <p className="text-sm text-fg-muted">No confirmed or cancelled bookings.</p>
             ) : (
               <ul className="divide-y divide-line text-sm">
-                {sortedBookings.map((b) => (
+                {visibleBookings.map((b) => (
                   <li key={b.id} className="py-2 first:pt-0 last:pb-0">
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="font-medium truncate">

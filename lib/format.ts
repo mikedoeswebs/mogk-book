@@ -36,6 +36,16 @@ export function formatDob(date: string): string {
   });
 }
 
+/** Whole years between a date of birth and today, e.g. 6. */
+export function ageFromDob(date: string): number {
+  const b = new Date(date + 'T00:00:00');
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
+  return age;
+}
+
 export function formatDateTime(dateStr: string, timeStr: string): string {
   return `${formatDate(dateStr)} ${formatTime(timeStr)}`;
 }

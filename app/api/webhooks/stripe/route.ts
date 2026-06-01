@@ -7,6 +7,7 @@ import {
   sendBookingAwaitingApproval,
   sendBookingsBatchConfirmation,
   sendBookingsBatchAwaitingApproval,
+  sendAdminBookingNotification,
 } from '@/lib/email/send';
 import { bookingNeedsApproval } from '@/lib/booking/rules';
 import type { Booking, Session, Parent, Child } from '@/lib/db/types';
@@ -102,6 +103,18 @@ async function handleCheckoutCompleted(
   const { data: parent } = await supabase
     .from('parents').select('*').eq('id', parentId).maybeSingle<Parent>();
   if (!parent) return;
+
+  // Notify the admin of every confirmed booking, single or bulk.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+  try {
+    await sendAdminBookingNotification({
+      parent,
+      items: refreshed.map((b) => ({ booking: b, session: b.sessions, child: b.children })),
+      siteUrl,
+    });
+  } catch (err) {
+    console.error('Admin booking notice failed', err);
+  }
 
   // Single-booking flow: keep the existing per-booking emails.
   if (refreshed.length === 1) {

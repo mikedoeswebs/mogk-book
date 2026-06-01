@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { formatDate, formatDob, formatPence } from '@/lib/format';
+import { formatDate, formatDob, formatPence, ageFromDob } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
 import type {
   Parent,
@@ -14,6 +14,7 @@ import type {
 import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { adjustCredit, claimGhost } from './actions';
 import { DeleteChildButton } from './DeleteChildButton';
+import { DeleteParentButton } from './DeleteParentButton';
 
 const REASON_LABEL: Record<string, string> = {
   cancellation_refund: 'Cancellation refund',
@@ -192,12 +193,20 @@ export default async function AdminParentDetailPage({
         </Link>
       </p>
 
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold">{parent.name}</h1>
-        <p className="text-fg-muted">
-          {parent.email}
-          {parent.phone ? ` - ${parent.phone}` : ''}
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold">{parent.name}</h1>
+          <p className="text-fg-muted">
+            {parent.email}
+            {parent.phone ? ` - ${parent.phone}` : ''}
+          </p>
+        </div>
+        <DeleteParentButton
+          parentId={parent.id}
+          parentName={parent.name}
+          childCount={(children ?? []).length}
+          bookingCount={bookingsTotal}
+        />
       </header>
 
       {sp.success && (
@@ -305,7 +314,7 @@ export default async function AdminParentDetailPage({
                 {(children ?? []).map((c) => (
                   <tr key={c.id}>
                     <td>{c.name}</td>
-                    <td>{c.dob ? formatDob(c.dob) : '-'}</td>
+                    <td>{c.dob ? `${formatDob(c.dob)} (${ageFromDob(c.dob)})` : '-'}</td>
                     <td>{c.notes ?? '-'}</td>
                     <td>
                       <DeleteChildButton
