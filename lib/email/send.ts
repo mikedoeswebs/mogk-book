@@ -576,7 +576,7 @@ export async function sendAdminSessionRoster(ctx: AdminSessionRosterContext) {
   const recipients = getAdminEmails();
   if (recipients.length === 0) {
     console.warn('[email] ADMIN_EMAILS not set - skipping session roster');
-    return;
+    return false;
   }
 
   const { date, startTime, endTime, groups, siteUrl } = ctx;
@@ -602,7 +602,7 @@ export async function sendAdminSessionRoster(ctx: AdminSessionRosterContext) {
     })
     .join('');
 
-  const text = `Your session in about 3 hours: ${when}
+  const text = `Your session in about an hour: ${when}
 
 ${textGroups}
 
@@ -610,12 +610,13 @@ View sessions: ${siteUrl}/admin/sessions
 
 Club MO/GK`;
   const html = `
-    <p>Your session in about 3 hours: <strong>${escape(when)}</strong></p>
+    <p>Your session in about an hour: <strong>${escape(when)}</strong></p>
     ${htmlGroups}
     <p><a href="${siteUrl}/admin/sessions">View sessions in admin</a></p>
   `;
 
   await Promise.all(recipients.map((to) => send(to, subject, text, html)));
+  return true;
 }
 
 function escape(s: string): string {

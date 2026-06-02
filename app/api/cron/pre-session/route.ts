@@ -5,10 +5,10 @@ import type { Session } from '@/lib/db/types';
 
 export const runtime = 'nodejs';
 
-// Roster alert ~3 hours before each session. Vercel Hobby can't run a cron more
+// Roster alert ~1 hour before each session. Vercel Hobby can't run a cron more
 // than once a day, so this endpoint is polled every ~15 min by an external
-// scheduler (secured by CRON_SECRET). The 30-minute window plus the
-// admin_roster_sent_at column mean each session is emailed exactly once.
+// scheduler (Upstash QStash, secured by CRON_SECRET). The 30-minute window plus
+// the admin_roster_sent_at column mean each session is emailed exactly once.
 
 type RosterBookingRow = {
   session_id: string;
@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
 
   const supabase = createSupabaseAdminClient();
   const now = Date.now();
-  const windowStart = new Date(now + 2 * 60 * 60 * 1000 + 45 * 60 * 1000).toISOString();
-  const windowEnd = new Date(now + 3 * 60 * 60 * 1000 + 15 * 60 * 1000).toISOString();
+  const windowStart = new Date(now + 45 * 60 * 1000).toISOString();
+  const windowEnd = new Date(now + 60 * 60 * 1000 + 15 * 60 * 1000).toISOString();
 
   const { data: sessions, error } = await supabase
     .from('sessions')
@@ -101,10 +101,12 @@ export async function GET(request: NextRequest) {
   );
 
   // Only mark sessions whose roster actually went out, so a transient send
-  // failure gets another attempt on the next poll (still inside the window).
+  // failure (rejected) or a skipped send (resolves false, e.g. ADMIN_EMAILS
+  // unset) gets another attempt on the next poll rather than silently burning
+  // the once-only flag.
   const sentSessionIds: string[] = [];
   results.forEach((r, i) => {
-    if (r.status === 'fulfilled') {
+    if (r.status === 'fulfilled' && r.value === true) {
       sentSessionIds.push(...slots[i].sessions.map((s) => s.id));
     }
   });
@@ -115,6 +117,6 @@ export async function GET(request: NextRequest) {
       .in('id', sentSessionIds);
   }
 
-  const sent = results.filter((r) => r.status === 'fulfilled').length;
-  return NextResponse.json({ slots: slots.length, sent, failed: results.length - sent });
+  const sent = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
+  return NextResponse.json({ slots: slots.length, sent, failed: slots.length - sent });
 }
