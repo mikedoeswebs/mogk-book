@@ -49,6 +49,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <NavLink href="/admin/parents">Parents</NavLink>
               <NavLink href="/admin/approvals">Approvals</NavLink>
               <NavLink href="/admin/analytics">Analytics</NavLink>
+              <NavLink href="/admin/income">Income</NavLink>
               <NavLink href="/admin/import">Import</NavLink>
               <span className="text-sm text-fg-muted pt-2 border-t border-line">{user.email}</span>
               <NavLink href="/sessions" exact>Parent view</NavLink>
@@ -71,6 +72,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <NavLink href="/admin/parents">Parents</NavLink>
             <NavLink href="/admin/approvals">Approvals</NavLink>
             <NavLink href="/admin/analytics">Analytics</NavLink>
+            <NavLink href="/admin/income">Income</NavLink>
             <NavLink href="/admin/import">Import</NavLink>
           </nav>
         </div>

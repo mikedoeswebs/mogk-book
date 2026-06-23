@@ -128,3 +128,65 @@ export async function getPlayerAttendance(
   if (error) throw error;
   return (data ?? []) as PlayerAttendanceRow[];
 }
+
+// Income (accrual, by session date) — see migration 018. All figures in pence.
+export type IncomeSummary = {
+  delivered_pence: number;
+  delivered_bookings: number;
+  forfeited_pence: number;
+  forfeited_bookings: number;
+  total_income_pence: number;
+  booking_fees_pence: number;
+};
+
+export type IncomeMonthlyRow = {
+  month_start: string;
+  delivered_pence: number;
+  forfeited_pence: number;
+  total_income_pence: number;
+};
+
+const EMPTY_INCOME: IncomeSummary = {
+  delivered_pence: 0,
+  delivered_bookings: 0,
+  forfeited_pence: 0,
+  forfeited_bookings: 0,
+  total_income_pence: 0,
+  booking_fees_pence: 0,
+};
+
+export async function getIncomeSummary(
+  supabase: SupabaseClient,
+  rangeStart: string,
+  rangeEnd: string,
+): Promise<IncomeSummary> {
+  const { data, error } = await supabase.rpc('analytics_income_summary', {
+    p_start: rangeStart,
+    p_end: rangeEnd,
+  });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return (row ?? EMPTY_INCOME) as IncomeSummary;
+}
+
+export async function getIncomeMonthly(
+  supabase: SupabaseClient,
+  rangeStart: string,
+  rangeEnd: string,
+): Promise<IncomeMonthlyRow[]> {
+  const { data, error } = await supabase.rpc('analytics_income_monthly', {
+    p_start: rangeStart,
+    p_end: rangeEnd,
+  });
+  if (error) throw error;
+  return (data ?? []) as IncomeMonthlyRow[];
+}
+
+/** Present-day account-credit liability across all parents, in pence. */
+export async function getCreditOutstanding(
+  supabase: SupabaseClient,
+): Promise<number> {
+  const { data, error } = await supabase.rpc('analytics_credit_outstanding');
+  if (error) throw error;
+  return Number(data ?? 0);
+}
