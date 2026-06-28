@@ -69,6 +69,25 @@ export async function confirmBookings(formData: FormData) {
     remainingBySession.set(a.session_id, a.remaining);
   }
 
+  // Block duplicate bookings: same child already booked for the same session.
+  const childIdsToCheck = fresh.items.map((i) => i.childId).filter(Boolean) as string[];
+  if (childIdsToCheck.length > 0) {
+    const { data: existing } = await supabase
+      .from('bookings')
+      .select('session_id, child_id')
+      .in('session_id', sessionIds)
+      .in('child_id', childIdsToCheck)
+      .in('status', ['pending_payment', 'awaiting_approval', 'active']);
+    const bookedPairs = new Set((existing ?? []).map((b) => `${b.session_id}:${b.child_id}`));
+    for (const item of fresh.items) {
+      if (item.childId && bookedPairs.has(`${item.sessionId}:${item.childId}`)) {
+        const child = (children ?? []).find((c) => c.id === item.childId);
+        const session = sessionById.get(item.sessionId);
+        redirect(`/book?error=${encodeURIComponent(`${child?.name ?? 'A player'} is already booked on ${session ? formatDateLong(session.date) : 'one of these sessions'}.`)}`);
+      }
+    }
+  }
+
   // Validate per-row, consuming a seat for each row of the same session.
   const valid: { item: typeof fresh.items[number]; session: Session }[] = [];
   for (const item of fresh.items) {

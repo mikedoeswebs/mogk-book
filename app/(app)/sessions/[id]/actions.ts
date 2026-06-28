@@ -47,6 +47,18 @@ export async function createCheckoutSession(formData: FormData) {
   }
   if (!child) redirect(`/sessions/${sessionId}?error=Invalid+player+selected`);
 
+  const { data: duplicate } = await supabase
+    .from('bookings')
+    .select('id')
+    .eq('session_id', sessionId)
+    .eq('child_id', childId)
+    .in('status', ['pending_payment', 'awaiting_approval', 'active'])
+    .maybeSingle();
+
+  if (duplicate) {
+    redirect(`/sessions/${sessionId}?error=${encodeURIComponent(`${child.name} is already booked on this session.`)}`);
+  }
+
   const admin = createSupabaseAdminClient();
   const balance = await getCreditBalance(admin, parent.id);
   const { creditApplied, amountToCharge } = applyCredit(session.price_pence, balance);

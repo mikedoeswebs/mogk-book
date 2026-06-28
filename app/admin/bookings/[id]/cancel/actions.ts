@@ -28,8 +28,9 @@ export async function cancelAdminBooking(formData: FormData) {
   await requireAdmin();
 
   const id = String(formData.get('id') ?? '').trim();
-  const issueCredit = String(formData.get('issue_credit') ?? '0') === '1';
   const refundCard = String(formData.get('refund_card') ?? '0') === '1';
+  // Never issue credit and refund card simultaneously — card refund takes priority.
+  const issueCredit = !refundCard && String(formData.get('issue_credit') ?? '0') === '1';
   const reason = String(formData.get('reason') ?? '').trim() || null;
 
   if (!id) redirect('/admin/bookings?error=Missing+booking+id');

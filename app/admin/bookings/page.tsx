@@ -2,9 +2,8 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
-import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Booking, Session, Parent, Child } from '@/lib/db/types';
-import { cancelAdminBooking } from './[id]/cancel/actions';
+import { CancelBookingButton } from './CancelBookingButton';
 
 type Row = Booking & {
   sessions: Session;
@@ -274,21 +273,19 @@ export default async function AdminBookingsPage({
                       {cancellable && (
                         <>
                           {' | '}
-                          <form action={cancelAdminBooking} className="inline">
-                            <input type="hidden" name="id" value={b.id} />
-                            <input type="hidden" name="issue_credit" value={b.is_ghost ? '0' : '1'} />
-                            <input
-                              type="hidden"
-                              name="refund_card"
-                              value={b.payment_method === 'card' && b.stripe_payment_intent_id ? '1' : '0'}
-                            />
-                            <SubmitButton
-                              className="text-[var(--danger-fg)] border-0 bg-transparent p-0 capitalize no-underline! hover:underline! font-normal tracking-normal"
-                              pendingLabel="Cancelling…"
-                            >
-                              Cancel
-                            </SubmitButton>
-                          </form>
+                          {(() => {
+                            const cardRefund = !b.is_ghost && b.payment_method === 'card' && !!b.stripe_payment_intent_id;
+                            const sessionLabel = `${formatDate(b.sessions.date)} ${formatTime(b.sessions.start_time)}`;
+                            return (
+                              <CancelBookingButton
+                                bookingId={b.id}
+                                playerName={playerName}
+                                sessionLabel={sessionLabel}
+                                issueCredit={!b.is_ghost && !cardRefund}
+                                refundCard={cardRefund}
+                              />
+                            );
+                          })()}
                         </>
                       )}
                     </td>
