@@ -70,6 +70,8 @@ export default async function AdminSessionsPage({
   const hasPrev = year > earliestYear;
   const hasNext = year < latestYear;
 
+  const currentMonthKey = `${currentYear}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}`;
+
   const ids = (sessions ?? []).map((s) => s.id);
   const remainingBySession = new Map<string, number>();
   const takenBySession = new Map<string, number>();
@@ -166,42 +168,73 @@ export default async function AdminSessionsPage({
 
       {!sessions || sessions.length === 0 ? (
         <p className="text-fg-muted">No sessions in {year}.</p>
-      ) : (
-        blocks.map((block) => (
-          <section
-            key={block.monthKey}
-            className="space-y-2 pt-2 pb-4"
-          >
-            <h2 className="text-xl font-bold">{block.monthLabel}</h2>
-            <div className="overflow-x-auto">
-            <table className="text-sm">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th className="hidden sm:table-cell">Time</th>
-                  <th className="hidden sm:table-cell">Coach</th>
-                  <th className="hidden sm:table-cell">Groups</th>
-                  <th className="hidden sm:table-cell">Price</th>
-                  <th className="hidden sm:table-cell">Bookings</th>
-                  <th className="hidden sm:table-cell">Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {block.slots.map((slot) => (
-                  <SlotRow
-                    key={slot.key}
-                    slot={slot}
-                    takenBySession={takenBySession}
-                  />
-                ))}
-              </tbody>
-            </table>
-            </div>
-          </section>
-        ))
-      )}
+      ) : (() => {
+        const pastBlocks = blocks.filter((b) => b.monthKey < currentMonthKey);
+        const currentBlocks = blocks.filter((b) => b.monthKey >= currentMonthKey);
+        return (
+          <>
+            {pastBlocks.length > 0 && (
+              <details className="border border-line rounded bg-surface">
+                <summary className="cursor-pointer px-3 py-2 font-heading uppercase tracking-wide text-sm font-bold select-none">
+                  Past months ({pastBlocks.length})
+                </summary>
+                <div className="px-3 pb-3 space-y-4">
+                  {pastBlocks.map((block) => (
+                    <MonthSection
+                      key={block.monthKey}
+                      block={block}
+                      takenBySession={takenBySession}
+                    />
+                  ))}
+                </div>
+              </details>
+            )}
+            {currentBlocks.map((block) => (
+              <MonthSection
+                key={block.monthKey}
+                block={block}
+                takenBySession={takenBySession}
+              />
+            ))}
+          </>
+        );
+      })()}
     </div>
+  );
+}
+
+function MonthSection({
+  block,
+  takenBySession,
+}: {
+  block: { monthKey: string; monthLabel: string; slots: Slot[] };
+  takenBySession: Map<string, number>;
+}) {
+  return (
+    <section className="space-y-2 pt-2 pb-4">
+      <h2 className="text-xl font-bold">{block.monthLabel}</h2>
+      <div className="overflow-x-auto">
+        <table className="text-sm">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th className="hidden sm:table-cell">Time</th>
+              <th className="hidden sm:table-cell">Coach</th>
+              <th className="hidden sm:table-cell">Groups</th>
+              <th className="hidden sm:table-cell">Price</th>
+              <th className="hidden sm:table-cell">Bookings</th>
+              <th className="hidden sm:table-cell">Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {block.slots.map((slot) => (
+              <SlotRow key={slot.key} slot={slot} takenBySession={takenBySession} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 

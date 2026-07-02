@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { isAdminEmail } from '@/lib/auth/require-user';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -16,5 +17,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  return NextResponse.redirect(`${origin}${next}`);
+  let destination = next;
+  if (next === '/sessions') {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (isAdminEmail(user?.email)) destination = '/admin';
+  }
+
+  return NextResponse.redirect(`${origin}${destination}`);
 }

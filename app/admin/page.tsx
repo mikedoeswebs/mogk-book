@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { formatPence } from '@/lib/format';
+import { formatPence, formatTime } from '@/lib/format';
 import { getPlayerAttendance, type PlayerAttendanceRow } from '@/lib/admin/analytics';
 
 const ALL_TIME_START = '2000-01-01';
@@ -15,7 +15,7 @@ const MONTH_LABELS = [
 // A "session" in this UI = a date+time slot. Multiple age-group rows in the DB
 // sessions table that share the same (date, start_time) collapse to one
 // session here.
-type SlotRow = { id: string; date: string; start_time: string };
+type SlotRow = { id: string; date: string; start_time: string; end_time: string; age_group: string | null };
 type BookingAmount = {
   status: 'active' | 'awaiting_approval';
   amount_pence: number;
@@ -63,9 +63,11 @@ export default async function AdminDashboardPage() {
       .eq('status', 'open')
       .gte('date', monthStart).lte('date', monthEnd)
       .returns<SlotRow[]>(),
-    supabase.from('sessions').select('id, date, start_time')
+    supabase.from('sessions').select('id, date, start_time, end_time, age_group')
       .eq('status', 'open')
       .gte('date', today)
+      .order('date', { ascending: true })
+      .order('start_time', { ascending: true })
       .returns<SlotRow[]>(),
   ]);
 
@@ -104,6 +106,27 @@ export default async function AdminDashboardPage() {
   const upcomingBookingCount = upcomingBookings.filter((b) => b.status === 'active').length;
   const upcomingRevenue = sumNetRevenue(upcomingBookings);
 
+  // Find the next session slot (earliest date+time) and gather its groups.
+  let nextSlot: { date: string; start_time: string; end_time: string } | null = null;
+  const nextSlotGroups: SlotRow[] = [];
+  for (const r of upcomingSessionRows) {
+    if (
+      !nextSlot ||
+      r.date < nextSlot.date ||
+      (r.date === nextSlot.date && r.start_time < nextSlot.start_time)
+    ) {
+      nextSlot = { date: r.date, start_time: r.start_time, end_time: r.end_time };
+    }
+  }
+  if (nextSlot) {
+    for (const r of upcomingSessionRows) {
+      if (r.date === nextSlot.date && r.start_time === nextSlot.start_time) {
+        nextSlotGroups.push(r);
+      }
+    }
+    nextSlotGroups.sort((a, b) => (b.age_group ?? '').localeCompare(a.age_group ?? ''));
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -123,6 +146,29 @@ export default async function AdminDashboardPage() {
           </Link>
         </div>
       </div>
+
+      {nextSlot && nextSlotGroups.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="font-heading uppercase tracking-wider text-sm text-fg-muted">
+            Next session
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-fg-muted whitespace-nowrap">
+              {formatNextSessionDate(nextSlot.date)}&nbsp;&middot;&nbsp;
+              {formatTime(nextSlot.start_time)}–{formatTime(nextSlot.end_time)}
+            </span>
+            {nextSlotGroups.map((r) => (
+              <Link
+                key={r.id}
+                href={`/admin/sessions/${r.id}/edit`}
+                className="inline-block bg-surface border border-line text-fg font-semibold no-underline px-3 py-1.5 rounded text-sm hover:bg-surface-2"
+              >
+                {r.age_group ?? 'Group'} &rarr;
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3">
         <h2 className="font-heading uppercase tracking-wider text-sm text-fg-muted">
@@ -220,6 +266,14 @@ function AttendanceRow({ row }: { row: PlayerAttendanceRow }) {
       <td>{row.attendance_count}</td>
     </tr>
   );
+}
+
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatNextSessionDate(iso: string): string {
+  const d = new Date(iso + 'T00:00:00');
+  return `${WEEKDAY_SHORT[d.getDay()]} ${d.getDate()} ${MONTH_SHORT[d.getMonth()]}`;
 }
 
 function Card({
