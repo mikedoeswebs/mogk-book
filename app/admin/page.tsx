@@ -157,6 +157,12 @@ export default async function AdminDashboardPage() {
               {formatNextSessionDate(nextSlot.date)}&nbsp;&middot;&nbsp;
               {formatTime(nextSlot.start_time)}–{formatTime(nextSlot.end_time)}
             </span>
+            <Link
+              href={`/admin/sessions/${nextSlotGroups[0].id}/register`}
+              className="inline-block bg-accent text-accent-ink font-semibold no-underline px-3 py-1.5 rounded text-sm hover:bg-accent-hover"
+            >
+              Register &rarr;
+            </Link>
             {nextSlotGroups.map((r) => (
               <Link
                 key={r.id}

@@ -107,7 +107,10 @@ export default async function EditSessionPage({
   return (
     <div className="space-y-4">
       <p><Link href="/admin/sessions"><ArrowLeft /> Back to sessions</Link></p>
-      <h1 className="text-2xl font-bold">Edit session</h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h1 className="text-2xl font-bold">Edit session</h1>
+        <Link href={`/admin/sessions/${session.id}/register`}>View register</Link>
+      </div>
       {sp.error && (
         <p className="p-3 bg-[var(--danger-bg)] border border-[var(--danger-line)] text-[var(--danger-fg)] rounded">{sp.error}</p>
       )}

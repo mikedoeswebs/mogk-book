@@ -289,6 +289,9 @@ function SlotRow({
         {statuses.map((st) => <div key={st}>{st}</div>)}
       </td>
       <td className="whitespace-nowrap text-right align-top">
+        <p>
+          <Link href={`/admin/sessions/${sessions[0].id}/register`}>Register</Link>
+        </p>
         <ul>
           {sessions.map((s) => (
             <li key={s.id}>
