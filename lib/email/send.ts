@@ -297,23 +297,31 @@ Club MO/GK`;
 type WeeklyDigestContext = {
   parent: Parent;
   sessions: Session[];
+  /** session id -> spots left; missing ids fall back to full capacity. */
+  remainingBySession?: Map<string, number>;
   siteUrl: string;
 };
 
 export async function sendWeeklyDigest(ctx: WeeklyDigestContext) {
-  const { parent, sessions, siteUrl } = ctx;
+  const { parent, sessions, remainingBySession, siteUrl } = ctx;
   if (sessions.length === 0) return;
 
   const subject = `This week's coaching sessions - ${sessions.length} open`;
 
+  const availability = (s: Session) => {
+    const remaining = remainingBySession?.get(s.id) ?? s.capacity;
+    if (remaining <= 0) return 'fully booked';
+    return `${remaining} of ${s.capacity} spot${s.capacity === 1 ? '' : 's'} left`;
+  };
+
   const lines = sessions.map((s) => {
     const price = formatPence(s.price_pence);
-    return `• ${sessionLine(s)} - ${price}`;
+    return `• ${sessionLine(s)} - ${price} - ${availability(s)}`;
   });
   const htmlLines = sessions
     .map((s) => {
       const price = formatPence(s.price_pence);
-      return `<li><strong>${escape(sessionLine(s))}</strong> - ${escape(price)}</li>`;
+      return `<li><strong>${escape(sessionLine(s))}</strong> - ${escape(price)} - ${escape(availability(s))}</li>`;
     })
     .join('');
 

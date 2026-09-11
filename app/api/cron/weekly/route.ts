@@ -63,10 +63,18 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  const remainingBySession = new Map<string, number>();
+  const { data: availability } = await supabase.rpc('get_session_availability', {
+    p_session_ids: upcoming.map((s) => s.id),
+  });
+  for (const a of (availability ?? []) as { session_id: string; remaining: number }[]) {
+    remainingBySession.set(a.session_id, a.remaining);
+  }
+
   const siteUrl = getSiteUrl();
   const results = await Promise.allSettled(
     recipients.map((parent) =>
-      sendWeeklyDigest({ parent, sessions: upcoming, siteUrl }),
+      sendWeeklyDigest({ parent, sessions: upcoming, remainingBySession, siteUrl }),
     ),
   );
 
