@@ -9,6 +9,7 @@ import { getStripe } from '@/lib/stripe/client';
 import { getCreditBalance } from '@/lib/booking/credits';
 import { calculateBookingFeePence, allocateFeePence } from '@/lib/booking/fees';
 import { bookingNeedsApproval, sessionIsPast } from '@/lib/booking/rules';
+import { clearWaitlistForBookings } from '@/lib/booking/waitlist';
 import {
   getSelection,
   setChildForRow,
@@ -151,6 +152,7 @@ export async function confirmBookings(formData: FormData) {
 
     await clearSelection();
     revalidatePath('/bookings');
+    await clearWaitlistForBookings(admin, items);
     await sendBatchEmail(parent, (ids as string[]) ?? []);
     redirect(`/bookings?credit=${creditAppliedTotal}`);
   }

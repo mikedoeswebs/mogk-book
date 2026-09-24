@@ -9,7 +9,12 @@ import { getStripe } from '@/lib/stripe/client';
 import { applyCredit, getCreditBalance } from '@/lib/booking/credits';
 import { bookingFeeFor } from '@/lib/booking/fees';
 import { bookingNeedsApproval, sessionIsPast } from '@/lib/booking/rules';
-import { sendBookingConfirmation, sendBookingAwaitingApproval } from '@/lib/email/send';
+import {
+  sendBookingConfirmation,
+  sendBookingAwaitingApproval,
+  sendAdminWaitlistJoin,
+} from '@/lib/email/send';
+import { clearWaitlistForBookings, getRemainingSpaces } from '@/lib/booking/waitlist';
 import { formatDateLong } from '@/lib/format';
 import type { Session, Child, Booking, Parent } from '@/lib/db/types';
 
@@ -84,6 +89,7 @@ export async function createCheckoutSession(formData: FormData) {
     if (rpcError) redirect(`/sessions/${session.id}?error=${encodeURIComponent(reserveErrorMessage(rpcError.message))}`);
 
     if (bookingId) {
+      await clearWaitlistForBookings(admin, [{ session_id: session.id, child_id: child.id }]);
       await sendBookingEmail(parent, child, session, bookingId, 0, creditApplied, needsApproval);
     }
 
@@ -156,6 +162,91 @@ export async function createCheckoutSession(formData: FormData) {
   }
 
   redirect(checkout.url);
+}
+
+export async function joinWaitlist(formData: FormData) {
+  const parent = await requireParent();
+  const sessionId = String(formData.get('session_id') ?? '');
+  const childId = String(formData.get('child_id') ?? '');
+  if (!sessionId || !childId) redirect(`/sessions/${sessionId}?error=Missing+selection`);
+
+  const admin = createSupabaseAdminClient();
+  const [{ data: session }, { data: child }] = await Promise.all([
+    admin.from('sessions').select('*').eq('id', sessionId).maybeSingle<Session>(),
+    admin
+      .from('children')
+      .select('*')
+      .eq('id', childId)
+      .eq('parent_id', parent.id)
+      .maybeSingle<Child>(),
+  ]);
+
+  if (!session) redirect('/sessions?error=Session+not+found');
+  if (!child) redirect(`/sessions/${sessionId}?error=Invalid+player+selected`);
+  if (session.status !== 'open' || sessionIsPast(session)) {
+    redirect(`/sessions/${sessionId}?error=This+session+can+no+longer+be+booked`);
+  }
+  // Only full sessions have a waiting list - otherwise they can just book.
+  if ((await getRemainingSpaces(admin, session)) > 0) {
+    redirect(`/sessions/${sessionId}?error=${encodeURIComponent('A space is available - you can book it now.')}`);
+  }
+
+  const { data: duplicate } = await admin
+    .from('bookings')
+    .select('id')
+    .eq('session_id', sessionId)
+    .eq('child_id', childId)
+    .in('status', ['pending_payment', 'awaiting_approval', 'active'])
+    .maybeSingle();
+  if (duplicate) {
+    redirect(`/sessions/${sessionId}?error=${encodeURIComponent(`${child.name} is already booked on this session.`)}`);
+  }
+
+  const { error } = await admin
+    .from('waitlist_entries')
+    .upsert(
+      { session_id: sessionId, parent_id: parent.id, child_id: childId },
+      { onConflict: 'session_id,child_id', ignoreDuplicates: true },
+    );
+  if (error) redirect(`/sessions/${sessionId}?error=${encodeURIComponent(error.message)}`);
+
+  try {
+    const { count } = await admin
+      .from('waitlist_entries')
+      .select('*', { count: 'exact', head: true })
+      .eq('session_id', sessionId);
+    await sendAdminWaitlistJoin({
+      session,
+      parent,
+      child,
+      waitingCount: count ?? 1,
+      siteUrl: getSiteUrl(),
+    });
+  } catch (err) {
+    console.error('Admin waiting list notice failed', err);
+  }
+
+  revalidatePath(`/sessions/${sessionId}`);
+  redirect(`/sessions/${sessionId}?waitlisted=1`);
+}
+
+export async function leaveWaitlist(formData: FormData) {
+  const parent = await requireParent();
+  const id = String(formData.get('id') ?? '');
+  const returnTo = String(formData.get('return_to') ?? '');
+  // Only ever bounce back to our own pages.
+  const back = returnTo === '/bookings' || /^\/sessions\/[\w-]+$/.test(returnTo) ? returnTo : '/bookings';
+  if (!id) redirect(back);
+
+  const admin = createSupabaseAdminClient();
+  await admin
+    .from('waitlist_entries')
+    .delete()
+    .eq('id', id)
+    .eq('parent_id', parent.id);
+
+  revalidatePath(back);
+  redirect(back);
 }
 
 function reserveErrorMessage(raw: string): string {

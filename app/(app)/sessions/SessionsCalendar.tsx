@@ -350,8 +350,12 @@ function DayPopover({
                   </div>
                 </div>
                 <div className="ml-auto shrink-0">
-                  {sPast || full ? (
+                  {sPast ? (
                     <span className="text-sm text-fg-muted">-</span>
+                  ) : full ? (
+                    <Link href={`/sessions/${s.id}`} className="text-sm">
+                      Waiting list
+                    </Link>
                   ) : (
                     <Link
                       href={`/sessions/${s.id}`}

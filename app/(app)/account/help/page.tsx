@@ -21,6 +21,7 @@ export default async function HelpPage() {
           <li><a href="#signing-up">Signing up</a></li>
           <li><a href="#adding-players">Adding a player</a></li>
           <li><a href="#booking">Booking sessions</a></li>
+          <li><a href="#waiting-lists">Waiting lists</a></li>
           <li><a href="#paying">Paying</a></li>
           <li><a href="#fees-credit">Booking fees and account credit</a></li>
           <li><a href="#cancelling">Cancelling a session</a></li>
@@ -33,7 +34,7 @@ export default async function HelpPage() {
 
       <h2 id="signing-up" className="text-2xl font-bold mt-8">Signing up</h2>
       <p>
-        There are no passwords. You sign in by entering your email at the{' '}<Link href="/login">log in page</Link>; we send a "magic" link to that address. Click it from your phone or computer and you&apos;re in. Links expire after an hour, so request a fresh one if it no longer works.
+        There are no passwords. You sign in by entering your email at the{' '}<Link href="/login">log in page</Link>; we send a &quot;magic&quot; link to that address. Click it from your phone or computer and you&apos;re in. Links expire after an hour, so request a fresh one if it no longer works.
       </p>
       <p>
         The first time you sign in you&apos;ll be asked for your name, phone number, and to accept the <Link href="/legal/terms">terms of use</Link> and{' '}<Link href="/legal/privacy">privacy notice</Link>. You can also opt into a weekly email reminder of upcoming sessions that goes out on Friday mornings. Once that&apos;s saved you&apos;re ready to add a player and book sessions.
@@ -56,6 +57,17 @@ export default async function HelpPage() {
       </p>
       <p>
         On the review screen you assign a player to each session. If you haven&apos;t added players yet, do that first from <Link href="/children">My players</Link>. You can&apos;t checkout without a player attached to every session.
+      </p>
+
+      <h2 id="waiting-lists" className="text-2xl font-bold mt-8">Waiting lists</h2>
+      <p>
+        If a session is fully booked, open it from <Link href="/sessions">Sessions</Link>{' '}and choose <strong>Join waiting list</strong>, picking which player it&apos;s for. Joining is free and doesn&apos;t take any payment.
+      </p>
+      <p>
+        If a space opens up, for example because someone cancels, we email everyone on the waiting list at the same time. The space goes to whoever books first, so it&apos;s worth acting quickly. If the space opens within 24 hours of the session, the usual <a href="#the-24-hour-rules">late booking approval</a>{' '}applies.
+      </p>
+      <p>
+        You can see your waiting lists, and leave any you no longer need, on <Link href="/bookings">My bookings</Link>. Once your player is booked onto the session, they&apos;re taken off its waiting list automatically.
       </p>
 
       <h2 id="paying" className="text-2xl font-bold mt-8">Paying</h2>
@@ -131,6 +143,7 @@ export default async function HelpPage() {
       <ul className="list-disc pl-6 space-y-1">
         <li>When you confirm a booking, or a late booking is approved/declined.</li>
         <li>When you cancel a booking (with credit, refund, or just confirmation as appropriate).</li>
+        <li>If a space opens up on a session you&apos;re on the waiting list for.</li>
         <li>A short reminder the day before each session.</li>
         <li>A weekly summary of upcoming sessions on Friday mornings, <em>only</em> if you opted in. You can turn this on or off any time from <Link href="/account">My account</Link>.</li>
         <li>Occasionally, important changes such as a cancelled session or an update to our terms.</li>

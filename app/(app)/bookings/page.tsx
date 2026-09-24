@@ -3,14 +3,20 @@ import { requireParent } from '@/lib/auth/require-parent';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCreditBalance } from '@/lib/booking/credits';
-import { cancellationIssuesCredit } from '@/lib/booking/rules';
+import { cancellationIssuesCredit, sessionIsPast } from '@/lib/booking/rules';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
-import type { Booking, Session, Child, CreditEntry } from '@/lib/db/types';
+import type { Booking, Session, Child, CreditEntry, WaitlistEntry } from '@/lib/db/types';
 import { cancelBooking, dismissPendingBooking } from './actions';
+import { leaveWaitlist } from '../sessions/[id]/actions';
 
 type BookingWithJoins = Booking & {
+  sessions: Session;
+  children: Child;
+};
+
+type WaitlistWithJoins = WaitlistEntry & {
   sessions: Session;
   children: Child;
 };
@@ -52,7 +58,7 @@ export default async function BookingsPage({
   const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
 
-  const [{ data: bookings }, { data: ledger }, balance] = await Promise.all([
+  const [{ data: bookings }, { data: ledger }, balance, { data: waitlist }] = await Promise.all([
     supabase
       .from('bookings')
       .select('*, sessions!session_id(*), children(*)')
@@ -67,7 +73,16 @@ export default async function BookingsPage({
       .limit(20)
       .returns<CreditEntry[]>(),
     getCreditBalance(admin, parent.id),
+    supabase
+      .from('waitlist_entries')
+      .select('*, sessions!session_id(*), children(*)')
+      .eq('parent_id', parent.id)
+      .returns<WaitlistWithJoins[]>(),
   ]);
+
+  const upcomingWaitlist = (waitlist ?? [])
+    .filter((w) => w.sessions && w.children && !sessionIsPast(w.sessions))
+    .sort((a, b) => a.sessions.starts_at.localeCompare(b.sessions.starts_at));
 
   const sortedBookings = (bookings ?? []).slice().sort((a, b) => {
     const dateCmp = b.sessions.date.localeCompare(a.sessions.date);
@@ -214,6 +229,46 @@ export default async function BookingsPage({
           </nav>
         )}
         </div>
+      )}
+
+      {upcomingWaitlist.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-xl font-bold">Waiting lists</h2>
+          <p className="text-sm text-fg-muted">
+            We&apos;ll email you if a space opens up. Spaces go to whoever books first.
+          </p>
+          <div className="overflow-x-auto"><table>
+            <thead>
+              <tr>
+                <th>Session</th>
+                <th>Player</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {upcomingWaitlist.map((w) => (
+                <tr key={w.id}>
+                  <td>
+                    <Link href={`/sessions/${w.session_id}`}>
+                      {formatDate(w.sessions.date)} {formatTime(w.sessions.start_time)}
+                    </Link>
+                    {w.sessions.age_group && (
+                      <span className="text-sm text-fg-muted"> ({w.sessions.age_group})</span>
+                    )}
+                  </td>
+                  <td>{w.children.name}</td>
+                  <td className="text-right">
+                    <form action={leaveWaitlist}>
+                      <input type="hidden" name="id" value={w.id} />
+                      <input type="hidden" name="return_to" value="/bookings" />
+                      <SubmitButton pendingLabel="Leaving…">Leave</SubmitButton>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        </section>
       )}
 
       {ledger && ledger.length > 0 && (

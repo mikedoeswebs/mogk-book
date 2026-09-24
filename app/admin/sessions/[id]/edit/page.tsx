@@ -4,8 +4,19 @@ import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ArrowLeft } from '@/lib/ui/Icon';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
-import type { Booking, Coach, Session } from '@/lib/db/types';
-import { updateSession, cancelSession, reopenSession, deleteSession } from './actions';
+import type { Booking, Coach, Session, WaitlistEntry } from '@/lib/db/types';
+import {
+  updateSession,
+  cancelSession,
+  reopenSession,
+  deleteSession,
+  removeWaitlistEntry,
+} from './actions';
+
+type WaitlistRow = WaitlistEntry & {
+  children: { name: string } | null;
+  parents: { name: string } | null;
+};
 
 type SessionBookingRow = {
   id: string;
@@ -44,7 +55,13 @@ export default async function EditSessionPage({
   const sp = await searchParams;
 
   const supabase = createSupabaseAdminClient();
-  const [{ data: session }, { data: coaches }, { data: linked }, { data: sessionBookings }] = await Promise.all([
+  const [
+    { data: session },
+    { data: coaches },
+    { data: linked },
+    { data: sessionBookings },
+    { data: waitlist },
+  ] = await Promise.all([
     supabase.from('sessions').select('*').eq('id', id).maybeSingle<Session>(),
     supabase
       .from('coaches')
@@ -62,6 +79,12 @@ export default async function EditSessionPage({
       .select('id, is_ghost, trialist_name, status, children(name), parents(name)')
       .eq('session_id', id)
       .returns<SessionBookingRow[]>(),
+    supabase
+      .from('waitlist_entries')
+      .select('*, children(name), parents(name)')
+      .eq('session_id', id)
+      .order('created_at', { ascending: true })
+      .returns<WaitlistRow[]>(),
   ]);
 
   if (!session) notFound();
@@ -329,6 +352,47 @@ export default async function EditSessionPage({
             <p className="pt-2 border-t border-line text-xs">
               <Link href={`/admin/bookings/new?session=${session.id}`}>+ Add booking</Link>
             </p>
+          </div>
+
+          <div className="p-4 border border-line rounded bg-surface space-y-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="text-lg font-bold">Waiting list</h2>
+              <span className="text-sm text-fg-muted">{(waitlist ?? []).length}</span>
+            </div>
+            {(waitlist ?? []).length === 0 ? (
+              <p className="text-sm text-fg-muted">Nobody is waiting.</p>
+            ) : (
+              <ul className="divide-y divide-line text-sm">
+                {waitlist!.map((w) => (
+                  <li key={w.id} className="py-2 first:pt-0 last:pb-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-medium truncate">{w.children?.name ?? 'Unknown player'}</span>
+                      <form action={removeWaitlistEntry}>
+                        <input type="hidden" name="id" value={w.id} />
+                        <input type="hidden" name="session_id" value={session.id} />
+                        <SubmitButton
+                          className="text-xs text-[var(--danger-fg)] border-0 bg-transparent p-0 font-normal normal-case tracking-normal hover:underline"
+                          pendingLabel="Removing…"
+                        >
+                          Remove
+                        </SubmitButton>
+                      </form>
+                    </div>
+                    <div className="text-xs text-fg-muted flex flex-wrap gap-x-2">
+                      {w.parents ? (
+                        <Link href={`/admin/parents/${w.parent_id}`}>{w.parents.name}</Link>
+                      ) : (
+                        <span>Unknown parent</span>
+                      )}
+                      <span>· Joined {new Date(w.created_at).toLocaleDateString('en-GB')}</span>
+                      {w.last_notified_at && (
+                        <span>· Emailed {new Date(w.last_notified_at).toLocaleDateString('en-GB')}</span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </aside>
       </div>

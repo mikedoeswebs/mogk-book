@@ -11,6 +11,7 @@ import {
   sendAdminCancellation,
 } from '@/lib/email/send';
 import { getStripe } from '@/lib/stripe/client';
+import { notifyWaitlist } from '@/lib/booking/waitlist';
 import type { Booking, Session, Parent, Child } from '@/lib/db/types';
 
 type FullBooking = Booking & {
@@ -28,12 +29,12 @@ export async function dismissPendingBooking(formData: FormData) {
 
   const { data: booking } = await admin
     .from('bookings')
-    .select('id, parent_id, status, credit_applied_pence, stripe_checkout_session_id')
+    .select('id, parent_id, session_id, status, credit_applied_pence, stripe_checkout_session_id')
     .eq('id', id)
     .maybeSingle<
       Pick<
         Booking,
-        'id' | 'parent_id' | 'status' | 'credit_applied_pence' | 'stripe_checkout_session_id'
+        'id' | 'parent_id' | 'session_id' | 'status' | 'credit_applied_pence' | 'stripe_checkout_session_id'
       >
     >();
 
@@ -67,6 +68,8 @@ export async function dismissPendingBooking(formData: FormData) {
       note: 'Reversed: dismissed by parent',
     });
   }
+
+  await notifyWaitlist(admin, [booking.session_id]);
 
   revalidatePath('/bookings');
   redirect('/bookings?dismissed=1');
@@ -157,6 +160,8 @@ export async function cancelBooking(formData: FormData) {
   } catch (err) {
     console.error('Admin cancellation notice failed', err);
   }
+
+  await notifyWaitlist(admin, [pre.session_id]);
 
   revalidatePath('/bookings');
 

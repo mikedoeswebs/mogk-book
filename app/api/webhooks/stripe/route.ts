@@ -10,6 +10,7 @@ import {
   sendAdminBookingNotification,
 } from '@/lib/email/send';
 import { bookingNeedsApproval } from '@/lib/booking/rules';
+import { clearWaitlistForBookings, notifyWaitlist } from '@/lib/booking/waitlist';
 import type { Booking, Session, Parent, Child } from '@/lib/db/types';
 
 export const runtime = 'nodejs';
@@ -98,6 +99,8 @@ async function handleCheckoutCompleted(
 
   if (!refreshed || refreshed.length === 0) return;
 
+  await clearWaitlistForBookings(supabase, refreshed);
+
   const parentId = refreshed[0].parent_id;
   if (!parentId) return;
   const { data: parent } = await supabase
@@ -173,4 +176,7 @@ async function handleCheckoutExpired(
       });
     }
   }
+
+  // Abandoned checkouts free up the spaces they were holding.
+  await notifyWaitlist(supabase, bookings.map((b) => b.session_id));
 }

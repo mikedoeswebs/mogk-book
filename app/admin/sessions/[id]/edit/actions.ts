@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { reconcileSessionCoaches } from '@/lib/coaches/sync';
+import { notifyWaitlist } from '@/lib/booking/waitlist';
 
 export async function updateSession(formData: FormData) {
   await requireAdmin();
@@ -25,6 +26,12 @@ export async function updateSession(formData: FormData) {
   }
 
   const supabase = createSupabaseAdminClient();
+  const { data: before } = await supabase
+    .from('sessions')
+    .select('capacity')
+    .eq('id', id)
+    .maybeSingle<{ capacity: number }>();
+
   const { error } = await supabase
     .from('sessions')
     .update({
@@ -45,6 +52,11 @@ export async function updateSession(formData: FormData) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Failed to update coaches';
     redirect(`/admin/sessions/${id}/edit?error=${encodeURIComponent(msg)}`);
+  }
+
+  // Extra spaces may be claimable by anyone on the waiting list.
+  if (before && capacity > before.capacity) {
+    await notifyWaitlist(supabase, [id]);
   }
 
   revalidatePath('/admin/sessions');
@@ -79,6 +91,7 @@ export async function reopenSession(formData: FormData) {
     .eq('id', id);
 
   if (error) redirect(`/admin/sessions/${id}/edit?error=${encodeURIComponent(error.message)}`);
+  await notifyWaitlist(supabase, [id]);
   revalidatePath('/admin/sessions');
   redirect(`/admin/sessions/${id}/edit`);
 }
@@ -120,4 +133,18 @@ export async function deleteSession(formData: FormData) {
 
   revalidatePath('/admin/sessions');
   redirect('/admin/sessions?deleted=1');
+}
+
+export async function removeWaitlistEntry(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get('id') ?? '');
+  const sessionId = String(formData.get('session_id') ?? '');
+  if (!id || !sessionId) redirect('/admin/sessions');
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.from('waitlist_entries').delete().eq('id', id);
+  if (error) redirect(`/admin/sessions/${sessionId}/edit?error=${encodeURIComponent(error.message)}`);
+
+  revalidatePath(`/admin/sessions/${sessionId}/edit`);
+  redirect(`/admin/sessions/${sessionId}/edit`);
 }

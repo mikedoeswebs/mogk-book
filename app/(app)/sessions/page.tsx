@@ -327,6 +327,8 @@ function DateGroup({
             <td>
               {bookable ? (
                 <Link href={`/sessions/${s.id}`}>Info</Link>
+              ) : !past ? (
+                <Link href={`/sessions/${s.id}`}>Waiting list</Link>
               ) : (
                 <span className="text-fg-muted">-</span>
               )}
@@ -396,6 +398,11 @@ function DateGroupMobile({
                 {s.age_group ? `${s.age_group} - ` : ''}
                 {availability}
               </p>
+              {!past && !bookable && (
+                <div className="mt-3">
+                  <Link href={`/sessions/${s.id}`} className="text-sm">Join waiting list</Link>
+                </div>
+              )}
               {bookable && (
                 <div className="flex items-center gap-3 mt-3">
                   <Link href={`/sessions/${s.id}`} className="text-sm">Info</Link>

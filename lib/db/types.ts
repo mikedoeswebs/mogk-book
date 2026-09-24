@@ -108,6 +108,15 @@ export interface Booking {
   updated_at: string;
 }
 
+export interface WaitlistEntry {
+  id: string;
+  session_id: string;
+  parent_id: string;
+  child_id: string;
+  created_at: string;
+  last_notified_at: string | null;
+}
+
 export interface CreditEntry {
   id: string;
   parent_id: string;

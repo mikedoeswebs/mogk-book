@@ -77,7 +77,7 @@ export default async function AdminDashboardPage() {
   const monthIds = monthSessionRows.map((r) => r.id);
   const upcomingIds = upcomingSessionRows.map((r) => r.id);
 
-  const [monthBookings, upcomingBookings, topAttendance, lapsed] = await Promise.all([
+  const [monthBookings, upcomingBookings, topAttendance, lapsed, waitingCount] = await Promise.all([
     monthIds.length === 0
       ? Promise.resolve([] as BookingAmount[])
       : supabase.from('bookings')
@@ -97,6 +97,12 @@ export default async function AdminDashboardPage() {
     getPlayerAttendance(supabase, ALL_TIME_START, ALL_TIME_END),
     // Same defaults as /admin/players/lapsed.
     getLapsedPlayers(supabase, { months: 6, maxSessions: 2, minWeeksSince: 3 }),
+    upcomingIds.length === 0
+      ? Promise.resolve(0)
+      : supabase.from('waitlist_entries')
+          .select('*', { count: 'exact', head: true })
+          .in('session_id', upcomingIds)
+          .then((r) => r.count ?? 0),
   ]);
 
   const monthSessionsCount = countSlots(monthSessionRows);
@@ -219,6 +225,7 @@ export default async function AdminDashboardPage() {
             href="/admin/players/lapsed"
             highlight={lapsed.length > 0}
           />
+          <Card label="On waiting lists" value={waitingCount} href="/admin/sessions" />
         </div>
       </section>
 

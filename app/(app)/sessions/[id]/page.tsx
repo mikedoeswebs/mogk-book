@@ -9,17 +9,17 @@ import { bookingNeedsApproval, sessionIsPast } from '@/lib/booking/rules';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
-import type { Child, Session } from '@/lib/db/types';
+import type { Child, Session, WaitlistEntry } from '@/lib/db/types';
 import { countSessionInSelection } from '@/lib/booking/selection';
 import { addToSelection } from '../selection-actions';
-import { createCheckoutSession } from './actions';
+import { createCheckoutSession, joinWaitlist, leaveWaitlist } from './actions';
 
 export default async function SessionDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; waitlisted?: string }>;
 }) {
   const parent = await requireParent();
   const { id } = await params;
@@ -59,11 +59,23 @@ export default async function SessionDetailPage({
   const noChildren = !children || children.length === 0;
   const inSelection = await countSessionInSelection(session.id);
 
+  const { data: waitlist } = await supabase
+    .from('waitlist_entries')
+    .select('*')
+    .eq('session_id', session.id)
+    .eq('parent_id', parent.id)
+    .returns<WaitlistEntry[]>();
+
   return (
     <div className="space-y-4">
       <p><Link href="/sessions"><ArrowLeft /> Back to sessions</Link></p>
       <h1 className="text-2xl font-bold">Session details</h1>
 
+      {sp.waitlisted && (
+        <p className="p-3 bg-[var(--ok-bg)] border border-[var(--ok-line)] text-[var(--ok-fg)] rounded">
+          You&apos;re on the waiting list. We&apos;ll email you if a space opens up.
+        </p>
+      )}
       {sp.error && (
         <p className="p-3 bg-[var(--danger-bg)] border border-[var(--danger-line)] text-[var(--danger-fg)] rounded">{sp.error}</p>
       )}
@@ -132,7 +144,11 @@ export default async function SessionDetailPage({
               {sessionClosed ? (
                 <p>This session is closed.</p>
               ) : remaining <= 0 ? (
-                <p>This session is fully booked.</p>
+                <WaitlistPanel
+                  sessionId={session.id}
+                  players={children ?? []}
+                  entries={waitlist ?? []}
+                />
               ) : noChildren ? (
                 <p>
                   You need to <Link href="/children">add a player</Link> before you can book.
@@ -193,6 +209,75 @@ export default async function SessionDetailPage({
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+function WaitlistPanel({
+  sessionId,
+  players,
+  entries,
+}: {
+  sessionId: string;
+  players: Child[];
+  entries: WaitlistEntry[];
+}) {
+  const waitingIds = new Set(entries.map((e) => e.child_id));
+  const nameById = new Map(players.map((c) => [c.id, c.name]));
+  const available = players.filter((c) => !waitingIds.has(c.id));
+
+  return (
+    <div className="p-4 bg-surface border border-line rounded space-y-3">
+      <div>
+        <h2 className="text-lg font-bold capitalize">This session is fully booked</h2>
+        <p className="text-sm text-fg-muted mt-1">
+          Join the waiting list and we&apos;ll email you if a space opens up. Everyone on the list is
+          told at the same time, and the space goes to whoever books first.
+        </p>
+      </div>
+
+      {entries.length > 0 && (
+        <ul className="space-y-2">
+          {entries.map((e) => (
+            <li key={e.id} className="flex items-center justify-between gap-3">
+              <span>
+                <strong>{nameById.get(e.child_id) ?? 'Player'}</strong> is on the waiting list
+              </span>
+              <form action={leaveWaitlist}>
+                <input type="hidden" name="id" value={e.id} />
+                <input type="hidden" name="return_to" value={`/sessions/${sessionId}`} />
+                <SubmitButton
+                  className="bg-transparent border border-line text-fg hover:border-accent text-sm font-normal"
+                  pendingLabel="Leaving…"
+                >
+                  Leave
+                </SubmitButton>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {players.length === 0 ? (
+        <p>
+          You need to <Link href="/children">add a player</Link> before you can join the waiting list.
+        </p>
+      ) : available.length > 0 && (
+        <form action={joinWaitlist} className="space-y-3">
+          <input type="hidden" name="session_id" value={sessionId} />
+          <label className="block">
+            <span className="block mb-1 text-sm">Which player?</span>
+            <select name="child_id" required className="w-full">
+              {available.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </label>
+          <SubmitButton className="w-full" pendingLabel="Joining…">
+            Join waiting list
+          </SubmitButton>
+        </form>
+      )}
     </div>
   );
 }

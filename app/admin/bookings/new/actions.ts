@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { sendBookingConfirmation } from '@/lib/email/send';
+import { clearWaitlistForBookings } from '@/lib/booking/waitlist';
 import type { Booking, Child, Parent, Session } from '@/lib/db/types';
 
 export async function createAdminBooking(formData: FormData) {
@@ -70,6 +71,10 @@ export async function createAdminBooking(formData: FormData) {
     const msg = humaniseRpcError(error.message);
     const back = isGhost ? '/admin/bookings/new?mode=ghost' : '/admin/bookings/new';
     redirect(`${back}&error=${encodeURIComponent(msg)}`.replace('?&', '?'));
+  }
+
+  if (!isGhost && bookingId) {
+    await clearWaitlistForBookings(admin, [{ session_id: sessionId, child_id: childId }]);
   }
 
   // Email the parent on real bookings (best effort).

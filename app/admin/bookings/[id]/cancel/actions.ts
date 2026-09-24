@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/client';
+import { notifyWaitlist } from '@/lib/booking/waitlist';
 import { sendCancellationCredit, sendCancellationRefunded } from '@/lib/email/send';
 import type { Booking, Child, Parent, Session } from '@/lib/db/types';
 
@@ -96,6 +97,8 @@ export async function cancelAdminBooking(formData: FormData) {
       console.error('Admin cancellation email failed', err);
     }
   }
+
+  await notifyWaitlist(admin, [pre.session_id]);
 
   revalidatePath('/admin/bookings');
   redirect('/admin/bookings?success=Booking+cancelled');

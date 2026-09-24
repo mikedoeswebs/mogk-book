@@ -627,6 +627,83 @@ Club MO/GK`;
   return true;
 }
 
+// ---------------- Waiting list ----------------
+
+type WaitlistSpaceContext = {
+  session: Session;
+  parent: Pick<Parent, 'name' | 'email'>;
+  child: Pick<Child, 'name'>;
+  needsApproval: boolean;
+  siteUrl: string;
+};
+
+export async function sendWaitlistSpaceAvailable(ctx: WaitlistSpaceContext) {
+  const { session, parent, child, needsApproval, siteUrl } = ctx;
+  const link = `${siteUrl}/sessions/${session.id}`;
+  const approvalNote = needsApproval
+    ? ' As the session starts within 24 hours, the booking will need admin approval once paid.'
+    : '';
+  const subject = `A space has opened up - ${formatDate(session.date)}`;
+  const text = `Hi ${parent.name},
+
+Good news - a space has opened up on a session ${child.name} is on the waiting list for:
+
+${sessionLine(session)}
+
+Spaces go to whoever books first, and everyone on the waiting list has been told, so book soon if you'd like it.${approvalNote}
+
+Book now: ${link}
+
+Club MO/GK`;
+  const html = `
+    <p>Hi ${escape(parent.name)},</p>
+    <p>Good news - a space has opened up on a session <strong>${escape(child.name)}</strong> is on the waiting list for:</p>
+    <p><strong>${escape(sessionLine(session))}</strong></p>
+    <p>Spaces go to whoever books first, and everyone on the waiting list has been told, so book soon if you'd like it.${escape(approvalNote)}</p>
+    <p><a href="${link}">Book now</a></p>
+    <p>Club MO/GK</p>
+  `;
+  await send(parent.email, subject, text, html);
+}
+
+type AdminWaitlistJoinContext = {
+  session: Session;
+  parent: Pick<Parent, 'name' | 'email'>;
+  child: Pick<Child, 'name'>;
+  waitingCount: number;
+  siteUrl: string;
+};
+
+export async function sendAdminWaitlistJoin(ctx: AdminWaitlistJoinContext) {
+  const recipients = getAdminEmails();
+  if (recipients.length === 0) {
+    console.warn('[email] ADMIN_EMAILS not set - skipping waiting list notice');
+    return;
+  }
+
+  const { session, parent, child, waitingCount, siteUrl } = ctx;
+  const link = `${siteUrl}/admin/sessions/${session.id}/edit`;
+  const subject = `Waiting list: ${child.name} - ${formatDate(session.date)}`;
+  const text = `${parent.name} (${parent.email}) added ${child.name} to the waiting list.
+
+Session: ${sessionLine(session)}
+Now waiting: ${waitingCount}
+
+View session: ${link}
+
+Club MO/GK`;
+  const html = `
+    <p><strong>${escape(parent.name)}</strong> (${escape(parent.email)}) added <strong>${escape(child.name)}</strong> to the waiting list.</p>
+    <table cellpadding="4" style="border-collapse:collapse;">
+      <tr><td><strong>Session</strong></td><td>${escape(sessionLine(session))}</td></tr>
+      <tr><td><strong>Now waiting</strong></td><td>${waitingCount}</td></tr>
+    </table>
+    <p><a href="${link}">View session in admin</a></p>
+  `;
+
+  await Promise.all(recipients.map((to) => send(to, subject, text, html)));
+}
+
 function escape(s: string): string {
   return s
     .replace(/&/g, '&amp;')

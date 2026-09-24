@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/client';
+import { notifyWaitlist } from '@/lib/booking/waitlist';
 import {
   sendBookingApproved,
   sendBookingRejected,
@@ -122,6 +123,8 @@ export async function rejectBooking(formData: FormData) {
   } catch (err) {
     console.error('Rejection email failed', err);
   }
+
+  await notifyWaitlist(supabase, [row.session_id]);
 
   revalidatePath('/admin/approvals');
   redirect('/admin/approvals?success=Booking+rejected+and+refunded');
