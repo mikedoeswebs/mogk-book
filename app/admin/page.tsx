@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { formatPence, formatTime } from '@/lib/format';
 import { getPlayerAttendance, type PlayerAttendanceRow } from '@/lib/admin/analytics';
+import { getLapsedPlayers } from '@/lib/admin/lapsed';
 
 const ALL_TIME_START = '2000-01-01';
 const ALL_TIME_END = '2999-12-31';
@@ -76,7 +77,7 @@ export default async function AdminDashboardPage() {
   const monthIds = monthSessionRows.map((r) => r.id);
   const upcomingIds = upcomingSessionRows.map((r) => r.id);
 
-  const [monthBookings, upcomingBookings, topAttendance] = await Promise.all([
+  const [monthBookings, upcomingBookings, topAttendance, lapsed] = await Promise.all([
     monthIds.length === 0
       ? Promise.resolve([] as BookingAmount[])
       : supabase.from('bookings')
@@ -94,6 +95,8 @@ export default async function AdminDashboardPage() {
           .returns<BookingAmount[]>()
           .then((r) => r.data ?? []),
     getPlayerAttendance(supabase, ALL_TIME_START, ALL_TIME_END),
+    // Same defaults as /admin/players/lapsed.
+    getLapsedPlayers(supabase, { months: 6, maxSessions: 2, minWeeksSince: 3 }),
   ]);
 
   const monthSessionsCount = countSlots(monthSessionRows);
@@ -202,6 +205,20 @@ export default async function AdminDashboardPage() {
           <Card label="Upcoming bookings" value={upcomingBookingCount} href="/admin/bookings?status=active" />
           <Card label="Forecast revenue" value={formatPence(upcomingRevenue)} />
           <Card label="All-time active" value={allActiveBookings ?? 0} href="/admin/bookings?status=active" />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="font-heading uppercase tracking-wider text-sm text-fg-muted">
+          Follow up
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card
+            label="Lapsed players"
+            value={lapsed.length}
+            href="/admin/players/lapsed"
+            highlight={lapsed.length > 0}
+          />
         </div>
       </section>
 
