@@ -10,6 +10,7 @@ import { getCreditBalance } from '@/lib/booking/credits';
 import { calculateBookingFeePence, allocateFeePence } from '@/lib/booking/fees';
 import { bookingNeedsApproval, sessionIsPast } from '@/lib/booking/rules';
 import { clearWaitlistForBookings } from '@/lib/booking/waitlist';
+import { hasFreeTrial, markFreeTrialBooking, trialIndex } from '@/lib/booking/trial';
 import {
   getSelection,
   setChildForRow,
@@ -108,21 +109,27 @@ export async function confirmBookings(formData: FormData) {
 
   if (valid.length === 0) redirect('/sessions');
 
+  // Free trial (new accounts, first booking only) goes on the earliest session.
+  const trialIdx = (await hasFreeTrial(admin, parent)) ? trialIndex(valid.map((r) => r.session)) : -1;
+
   // Totals + credit + fee allocation.
   const totalSessionPence = valid.reduce((s, r) => s + r.session.price_pence, 0);
-  const creditAppliedTotal = Math.max(0, Math.min(totalSessionPence, balance));
+  const trialPence = trialIdx >= 0 ? valid[trialIdx].session.price_pence : 0;
+  const creditAppliedTotal = Math.max(0, Math.min(totalSessionPence - trialPence, balance));
 
   let remainingCredit = creditAppliedTotal;
-  const perRow = valid.map((r) => {
-    const take = Math.min(remainingCredit, r.session.price_pence);
+  const perRow = valid.map((r, i) => {
+    const price = i === trialIdx ? 0 : r.session.price_pence;
+    const take = Math.min(remainingCredit, price);
     remainingCredit -= take;
     return {
       session: r.session,
       childId: r.item.childId!,
-      cardPortion: r.session.price_pence - take,
+      cardPortion: price - take,
       creditApplied: take,
     };
   });
+  const trialRow = trialIdx >= 0 ? perRow[trialIdx] : null;
 
   const amountToCharge = perRow.reduce((s, r) => s + r.cardPortion, 0);
   const totalFeePence = calculateBookingFeePence(amountToCharge);
@@ -150,11 +157,23 @@ export async function confirmBookings(formData: FormData) {
     });
     if (error) redirect(`/book?error=${encodeURIComponent(humanise(error.message))}`);
 
+    const trialOk = trialRow
+      ? await markFreeTrialBooking(admin, {
+          parentId: parent.id,
+          sessionId: trialRow.session.id,
+          childId: trialRow.childId,
+        })
+      : false;
+
     await clearSelection();
     revalidatePath('/bookings');
     await clearWaitlistForBookings(admin, items);
     await sendBatchEmail(parent, (ids as string[]) ?? []);
-    redirect(`/bookings?credit=${creditAppliedTotal}`);
+
+    const params = new URLSearchParams();
+    if (creditAppliedTotal > 0 || !trialRow) params.set('credit', String(creditAppliedTotal));
+    if (trialRow) params.set(trialOk ? 'trial' : 'error', trialOk ? '1' : `${TRIAL_TAKEN} The trial session wasn't booked; anything else is confirmed below.`);
+    redirect(`/bookings?${params}`);
   }
 
   // ---------- Scenario B: Stripe checkout ----------
@@ -207,6 +226,13 @@ export async function confirmBookings(formData: FormData) {
       parent_id: parent.id,
       bulk: '1',
     },
+    ...(trialRow && {
+      custom_text: {
+        submit: {
+          message: `Also includes your free trial session on ${formatDateLong(trialRow.session.date)} - nothing to pay for that one.`,
+        },
+      },
+    }),
   });
 
   const { error: rpcError } = await admin.rpc('try_reserve_bookings_bulk', {
@@ -219,6 +245,18 @@ export async function confirmBookings(formData: FormData) {
   if (rpcError) {
     try { await stripe.checkout.sessions.expire(checkout.id); } catch { /* best-effort */ }
     redirect(`/book?error=${encodeURIComponent(humanise(rpcError.message))}`);
+  }
+  if (trialRow) {
+    const trialOk = await markFreeTrialBooking(admin, {
+      parentId: parent.id,
+      sessionId: trialRow.session.id,
+      childId: trialRow.childId,
+    });
+    if (!trialOk) {
+      // Expiring the checkout makes the webhook release the other seats and credit.
+      try { await stripe.checkout.sessions.expire(checkout.id); } catch { /* best-effort */ }
+      redirect(`/book?error=${encodeURIComponent(`${TRIAL_TAKEN} Please review your sessions and try again.`)}`);
+    }
   }
   if (!checkout.url) {
     redirect('/book?error=Could+not+start+payment');
@@ -235,6 +273,7 @@ async function sendBatchEmail(parent: Parent, bookingIds: string[]) {
     .from('bookings')
     .select('*, sessions!session_id(*), children(*)')
     .in('id', bookingIds)
+    .neq('status', 'abandoned')
     .returns<(Booking & { sessions: Session; children: Child | null })[]>();
   if (!bookings || bookings.length === 0) return;
 
@@ -250,6 +289,8 @@ async function sendBatchEmail(parent: Parent, bookingIds: string[]) {
     console.error('Batch booking email failed', err);
   }
 }
+
+const TRIAL_TAKEN = 'Your free trial has already been used.';
 
 function humanise(raw: string): string {
   if (raw.includes('session_full')) return 'A session in your selection just filled up.';

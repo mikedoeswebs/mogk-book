@@ -8,6 +8,7 @@ import {
   sendCancellationCredit,
   sendCancellationNoRefund,
   sendCancellationRefunded,
+  sendCancellationFreeTrial,
   sendAdminCancellation,
 } from '@/lib/email/send';
 import { getStripe } from '@/lib/stripe/client';
@@ -109,6 +110,8 @@ export async function cancelBooking(formData: FormData) {
     | 'refunded_pre_service'
     | undefined;
   const creditPence = (row?.credit_issued_pence as number | undefined) ?? 0;
+  // Only a late cancellation uses up a free trial; see lib/booking/trial.ts.
+  const trialKept = pre.is_free_trial && outcome !== 'no_refund_late';
 
   // If the cancellation was on an unapproved booking, refund the cash -
   // excluding the booking fee, which is non-refundable.
@@ -136,7 +139,9 @@ export async function cancelBooking(formData: FormData) {
       parent: pre.parents,
       child: pre.children,
     };
-    if (outcome === 'credit_issued') {
+    if (pre.is_free_trial) {
+      await sendCancellationFreeTrial({ ...ctx, trialKept });
+    } else if (outcome === 'credit_issued') {
       await sendCancellationCredit({ ...ctx, creditIssuedPence: creditPence });
     } else if (outcome === 'no_refund_late') {
       await sendCancellationNoRefund(ctx);
@@ -155,6 +160,7 @@ export async function cancelBooking(formData: FormData) {
       session: pre.sessions,
       outcome: outcome ?? null,
       creditIssuedPence: creditPence,
+      isFreeTrial: pre.is_free_trial,
       siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
     });
   } catch (err) {
@@ -164,6 +170,8 @@ export async function cancelBooking(formData: FormData) {
   await notifyWaitlist(admin, [pre.session_id]);
 
   revalidatePath('/bookings');
+
+  if (pre.is_free_trial) redirect(trialKept ? '/bookings?trial_kept=1' : '/bookings?trial_used=1');
 
   switch (outcome) {
     case 'credit_issued':

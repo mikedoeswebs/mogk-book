@@ -28,6 +28,7 @@ const PAYMENT_METHOD_LABEL: Record<string, string> = {
 };
 
 function paidLine(booking: Booking) {
+  if (booking.is_free_trial) return 'Free trial';
   const parts = [];
   if (booking.amount_pence > 0) {
     const feeNote = booking.booking_fee_pence > 0
@@ -49,24 +50,31 @@ function paidLine(booking: Booking) {
 
 export async function sendBookingConfirmation(ctx: EmailContext) {
   const { booking, session, parent, child } = ctx;
-  const subject = `Booking confirmed - ${formatDate(session.date)}`;
+  const trial = booking.is_free_trial;
+  const subject = `${trial ? 'Free trial' : 'Booking'} confirmed - ${formatDate(session.date)}`;
+  const intro = trial
+    ? `${child.name}'s free trial session is booked - there's nothing to pay.`
+    : `Your booking for ${child.name} is confirmed.`;
+  const policy = trial
+    ? "If you can't make it, cancel at least 24 hours before the session and your free trial stays available to use on another session. Cancellations inside 24 hours use up the trial."
+    : 'You can cancel up to 24 hours before the session for a full credit. Cancellations inside 24 hours are recorded for the coach but no credit applies.';
   const text = `Hi ${parent.name},
 
-Your booking for ${child.name} is confirmed.
+${intro}
 
 ${sessionLine(session)}
 Paid: ${paidLine(booking)}
 
-You can cancel up to 24 hours before the session for a full credit. Cancellations inside 24 hours are recorded for the coach but no credit applies.
+${policy}
 
 Thanks,
 Club MO/GK`;
   const html = `
     <p>Hi ${escape(parent.name)},</p>
-    <p>Your booking for <strong>${escape(child.name)}</strong> is confirmed.</p>
+    <p>${escape(intro)}</p>
     <p><strong>${escape(sessionLine(session))}</strong><br>
     Paid: ${escape(paidLine(booking))}</p>
-    <p>You can cancel up to 24 hours before the session for a full credit. Cancellations inside 24 hours are recorded for the coach but no credit applies.</p>
+    <p>${escape(policy)}</p>
     <p>Thanks,<br>Club MO/GK</p>
   `;
   await send(parent.email, subject, text, html);
@@ -74,24 +82,31 @@ Club MO/GK`;
 
 export async function sendBookingAwaitingApproval(ctx: EmailContext) {
   const { booking, session, parent, child } = ctx;
-  const subject = `Booking received - awaiting approval (${formatDate(session.date)})`;
+  const trial = booking.is_free_trial;
+  const subject = `${trial ? 'Free trial' : 'Booking'} received - awaiting approval (${formatDate(session.date)})`;
+  const intro = trial
+    ? `We've received your free trial booking for ${child.name}.`
+    : `We've received your booking for ${child.name} and your payment has gone through.`;
+  const outcome = trial
+    ? "If we can't accept the booking, your free trial stays available to use on another session."
+    : "If we can't accept the booking, your payment will be refunded in full.";
   const text = `Hi ${parent.name},
 
-We've received your booking for ${child.name} and your payment has gone through.
+${intro}
 
 ${sessionLine(session)}
 Paid: ${paidLine(booking)}
 
-Because this session starts within 24 hours, an admin needs to approve it before it's confirmed. We'll email you as soon as we've reviewed it. If we can't accept the booking, your payment will be refunded in full.
+Because this session starts within 24 hours, an admin needs to approve it before it's confirmed. We'll email you as soon as we've reviewed it. ${outcome}
 
 Thanks,
 Club MO/GK`;
   const html = `
     <p>Hi ${escape(parent.name)},</p>
-    <p>We've received your booking for <strong>${escape(child.name)}</strong> and your payment has gone through.</p>
+    <p>${escape(intro)}</p>
     <p><strong>${escape(sessionLine(session))}</strong><br>
     Paid: ${escape(paidLine(booking))}</p>
-    <p>Because this session starts within 24 hours, an admin needs to approve it before it's confirmed. We'll email you as soon as we've reviewed it. If we can't accept the booking, your payment will be refunded in full.</p>
+    <p>Because this session starts within 24 hours, an admin needs to approve it before it's confirmed. We'll email you as soon as we've reviewed it. ${escape(outcome)}</p>
     <p>Thanks,<br>Club MO/GK</p>
   `;
   await send(parent.email, subject, text, html);
@@ -121,6 +136,29 @@ Club MO/GK`;
 
 export async function sendBookingRejected(ctx: EmailContext & { reason?: string }) {
   const { booking, session, parent, child, reason } = ctx;
+  if (booking.is_free_trial) {
+    const subject = `Booking declined - ${formatDate(session.date)}`;
+    const text = `Hi ${parent.name},
+
+Unfortunately we couldn't accept your late free trial booking for ${child.name}:
+
+${sessionLine(session)}
+
+${reason ? `Reason: ${reason}\n\n` : ''}Your free trial is still available, so you can book another session for free. If you have questions, just reply to this email.
+
+Club MO/GK`;
+    const html = `
+    <p>Hi ${escape(parent.name)},</p>
+    <p>Unfortunately we couldn't accept your late free trial booking for <strong>${escape(child.name)}</strong>:</p>
+    <p><strong>${escape(sessionLine(session))}</strong></p>
+    ${reason ? `<p><strong>Reason:</strong> ${escape(reason)}</p>` : ''}
+    <p>Your free trial is still available, so you can book another session for free. If you have questions, just reply to this email.</p>
+    <p>Club MO/GK</p>
+  `;
+    await send(parent.email, subject, text, html);
+    return;
+  }
+
   const refundedPence = booking.amount_pence - booking.booking_fee_pence;
   const feeNote = booking.booking_fee_pence > 0
     ? ` The ${formatPence(booking.booking_fee_pence)} booking fee is non-refundable, as it covers card processing.`
@@ -165,6 +203,31 @@ Club MO/GK`;
     <p>Your cancellation for <strong>${escape(child.name)}</strong>'s session has been recorded:</p>
     <p><strong>${escape(sessionLine(session))}</strong></p>
     <p><strong>${escape(formatPence(creditIssuedPence))}</strong> has been added to your credit balance and will be applied automatically to your next booking.</p>
+    <p>Club MO/GK</p>
+  `;
+  await send(parent.email, subject, text, html);
+}
+
+export async function sendCancellationFreeTrial(ctx: EmailContext & { trialKept: boolean }) {
+  const { session, parent, child, trialKept } = ctx;
+  const subject = `Cancellation confirmed - ${formatDate(session.date)}`;
+  const outcome = trialKept
+    ? 'Your free trial is still available, so you can book another session for free whenever suits.'
+    : "As the session is within 24 hours, your free trial has been used. We've let the coach know.";
+  const text = `Hi ${parent.name},
+
+We've cancelled ${child.name}'s free trial session:
+
+${sessionLine(session)}
+
+${outcome}
+
+Club MO/GK`;
+  const html = `
+    <p>Hi ${escape(parent.name)},</p>
+    <p>We've cancelled <strong>${escape(child.name)}</strong>'s free trial session:</p>
+    <p><strong>${escape(sessionLine(session))}</strong></p>
+    <p>${escape(outcome)}</p>
     <p>Club MO/GK</p>
   `;
   await send(parent.email, subject, text, html);
@@ -497,7 +560,8 @@ export async function sendAdminBookingNotification(ctx: AdminBookingContext) {
   const { parent, items, siteUrl } = ctx;
   const count = items.length;
   const anyAwaiting = items.some((i) => i.booking.status === 'awaiting_approval');
-  const subject = `New booking${count === 1 ? '' : 's'}: ${parent.name}${anyAwaiting ? ' (needs approval)' : ''}`;
+  const anyTrial = items.some((i) => i.booking.is_free_trial);
+  const subject = `New booking${count === 1 ? '' : 's'}: ${parent.name}${anyTrial ? ' (free trial)' : ''}${anyAwaiting ? ' (needs approval)' : ''}`;
   const rendered = renderBatchLines(items);
 
   const text = `${parent.name} (${parent.email}) just booked ${count} session${count === 1 ? '' : 's'}:
@@ -523,6 +587,7 @@ type AdminCancellationContext = {
   session: Session;
   outcome: 'credit_issued' | 'no_refund_late' | 'refunded_pre_service' | null;
   creditIssuedPence?: number;
+  isFreeTrial?: boolean;
   siteUrl: string;
 };
 
@@ -533,10 +598,13 @@ export async function sendAdminCancellation(ctx: AdminCancellationContext) {
     return;
   }
 
-  const { parent, child, session, outcome, creditIssuedPence = 0, siteUrl } = ctx;
+  const { parent, child, session, outcome, creditIssuedPence = 0, isFreeTrial = false, siteUrl } = ctx;
   const who = child?.name ?? 'a player';
-  const outcomeLabel =
-    outcome === 'credit_issued'
+  const outcomeLabel = isFreeTrial
+    ? outcome === 'no_refund_late'
+      ? 'Free trial - inside 24 hours, trial used'
+      : 'Free trial - trial still available'
+    : outcome === 'credit_issued'
       ? `Account credit issued: ${formatPence(creditIssuedPence)}`
       : outcome === 'refunded_pre_service'
         ? 'Refunded (booking was awaiting approval)'

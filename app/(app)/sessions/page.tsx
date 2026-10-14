@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireParent } from '@/lib/auth/require-parent';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { sessionIsPast } from '@/lib/booking/rules';
+import { hasFreeTrial } from '@/lib/booking/trial';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft, ArrowRight } from '@/lib/ui/Icon';
 import type { Session } from '@/lib/db/types';
@@ -22,11 +23,12 @@ export default async function SessionsPage({
 }: {
   searchParams: Promise<{ view?: string; month?: string }>;
 }) {
-  await requireParent();
+  const parent = await requireParent();
   const sp = await searchParams;
   const view: View = sp.view === 'calendar' ? 'calendar' : 'list';
 
   const supabase = await createSupabaseServerClient();
+  const freeTrial = await hasFreeTrial(supabase, parent);
   const todayISO = new Date().toISOString().slice(0, 10);
 
   if (view === 'calendar') {
@@ -66,6 +68,8 @@ export default async function SessionsPage({
           <h1 className="text-2xl font-bold">Sessions</h1>
           <ViewToggle current="calendar" monthYM={monthYM} />
         </header>
+
+        {freeTrial && <FreeTrialBanner />}
 
         <SessionsCalendar
           sessions={sessions ?? []}
@@ -170,6 +174,8 @@ export default async function SessionsPage({
         <h1 className="text-2xl font-bold">Sessions</h1>
         <ViewToggle current="list" monthYM={windowStart} />
       </header>
+
+      {freeTrial && <FreeTrialBanner />}
 
       <nav className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-heading uppercase tracking-wider text-sm text-fg-muted">
@@ -425,6 +431,16 @@ function DateGroupMobile({
         })}
       </ul>
     </div>
+  );
+}
+
+function FreeTrialBanner() {
+  return (
+    <p className="p-3 bg-[var(--ok-bg)] border border-[var(--ok-line)] text-[var(--ok-fg)] rounded">
+      <strong>Your first session is a free trial.</strong> Pick any session below and there&apos;s
+      nothing to pay. The trial covers one session only and is applied automatically to your first
+      booking. <Link href="/account/help#free-trial">How it works</Link>
+    </p>
   );
 }
 

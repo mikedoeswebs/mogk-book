@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCreditBalance } from '@/lib/booking/credits';
 import { cancellationIssuesCredit, sessionIsPast } from '@/lib/booking/rules';
+import { hasFreeTrial } from '@/lib/booking/trial';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
@@ -47,6 +48,9 @@ export default async function BookingsPage({
     refunded?: string;
     credit?: string;
     dismissed?: string;
+    trial?: string;
+    trial_kept?: string;
+    trial_used?: string;
     p?: string;
   }>;
 }) {
@@ -58,7 +62,7 @@ export default async function BookingsPage({
   const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
 
-  const [{ data: bookings }, { data: ledger }, balance, { data: waitlist }] = await Promise.all([
+  const [{ data: bookings }, { data: ledger }, balance, { data: waitlist }, freeTrial] = await Promise.all([
     supabase
       .from('bookings')
       .select('*, sessions!session_id(*), children(*)')
@@ -69,6 +73,7 @@ export default async function BookingsPage({
       .from('credits')
       .select('*')
       .eq('parent_id', parent.id)
+      .neq('amount_pence', 0)
       .order('created_at', { ascending: false })
       .limit(20)
       .returns<CreditEntry[]>(),
@@ -78,6 +83,7 @@ export default async function BookingsPage({
       .select('*, sessions!session_id(*), children(*)')
       .eq('parent_id', parent.id)
       .returns<WaitlistWithJoins[]>(),
+    hasFreeTrial(supabase, parent),
   ]);
 
   const upcomingWaitlist = (waitlist ?? [])
@@ -115,6 +121,21 @@ export default async function BookingsPage({
           within seconds. Refresh this page if it doesn&apos;t update.
         </Banner>
       )}
+      {sp.trial && (
+        <Banner kind="success">
+          Your free trial session is booked - we&apos;ve emailed you the details. See you there!
+        </Banner>
+      )}
+      {sp.trial_kept && (
+        <Banner kind="success">
+          Cancellation confirmed. Your free trial is still available, so you can book another session for free.
+        </Banner>
+      )}
+      {sp.trial_used && (
+        <Banner kind="info">
+          Cancellation recorded. As the session is within 24 hours, your free trial has been used.
+        </Banner>
+      )}
       {sp.credit && (
         <Banner kind="success">
           Booking confirmed using {formatPence(Number(sp.credit))} of credit.
@@ -143,7 +164,12 @@ export default async function BookingsPage({
       {sp.error && <Banner kind="error">{sp.error}</Banner>}
 
       {bookingsTotal === 0 ? (
-        <p>You don&apos;t have any bookings yet.</p>
+        <p>
+          You don&apos;t have any bookings yet.
+          {freeTrial && (
+            <> Your first session is a <strong>free trial</strong> - <Link href="/sessions">pick a session</Link> to get started.</>
+          )}
+        </p>
       ) : (
         <div className="space-y-3">
         <div className="overflow-x-auto"><table>
@@ -176,7 +202,7 @@ export default async function BookingsPage({
                   </td>
                   <td>{b.children.name}</td>
                   <td>
-                    {formatPence(b.amount_pence)}
+                    {b.is_free_trial ? 'Free trial' : formatPence(b.amount_pence)}
                     {b.booking_fee_pence > 0 && (
                       <div className="text-xs text-fg-muted">
                         incl. {formatPence(b.booking_fee_pence)} booking fee
@@ -194,7 +220,11 @@ export default async function BookingsPage({
                       <form action={cancelBooking}>
                         <input type="hidden" name="id" value={b.id} />
                         <SubmitButton pendingLabel="Cancelling…">
-                          {b.status === 'awaiting_approval'
+                          {b.is_free_trial
+                            ? b.status === 'awaiting_approval' || refundable
+                              ? 'Cancel (trial kept)'
+                              : 'Cancel (trial used)'
+                            : b.status === 'awaiting_approval'
                             ? 'Cancel (full refund)'
                             : refundable
                             ? 'Cancel (credit)'

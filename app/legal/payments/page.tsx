@@ -74,10 +74,18 @@ export default function PaymentsFaqPage() {
         Credit can&apos;t be paid out as cash and can&apos;t be moved to another account.
       </p>
 
+      <h2 className="text-xl font-bold mt-6">Is my first session free?</h2>
+      <p>
+        Yes, for new accounts. Your first booking is a free trial covering one session for one
+        player, applied automatically with nothing to pay and no booking fee. Cancel at least 24
+        hours ahead and you keep the trial for another session. Accounts registered before the free
+        trial was introduced aren&apos;t eligible.
+      </p>
+
       <h2 className="text-xl font-bold mt-6">Can I pay by cash, cheque, or bank transfer?</h2>
       <p>
-        Cash, cheque, bank transfer, and free trial bookings are handled by our admin team
-        in person rather than through the website. Talk to your coach or email{' '}
+        Cash, cheque, and bank transfer bookings are handled by our admin team in person rather
+        than through the website. Talk to your coach or email{' '}
         mike@mogoalkeeping.co.uk and we&apos;ll arrange it. The booking fee doesn&apos;t
         apply to non-card payments.
       </p>

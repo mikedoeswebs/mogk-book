@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCreditBalance } from '@/lib/booking/credits';
 import { calculateBookingFeePence, allocateFeePence } from '@/lib/booking/fees';
 import { sessionIsPast } from '@/lib/booking/rules';
+import { hasFreeTrial, trialIndex } from '@/lib/booking/trial';
 import { getSelection, type SelectionItem } from '@/lib/booking/selection';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import type { Child, Session } from '@/lib/db/types';
@@ -20,6 +21,7 @@ type RowState = {
   cardPortion: number;
   feeShare: number;
   creditShare: number;
+  trial: boolean;
 };
 
 export default async function ReviewPage({
@@ -48,7 +50,7 @@ export default async function ReviewPage({
   const admin = createSupabaseAdminClient();
 
   const sessionIds = Array.from(new Set(selection.items.map((i) => i.sessionId)));
-  const [{ data: sessions }, { data: children }, balance] = await Promise.all([
+  const [{ data: sessions }, { data: children }, balance, freeTrial] = await Promise.all([
     supabase.from('sessions').select('*').in('id', sessionIds).returns<Session[]>(),
     supabase
       .from('children')
@@ -57,6 +59,7 @@ export default async function ReviewPage({
       .order('name', { ascending: true })
       .returns<Child[]>(),
     getCreditBalance(admin, parent.id),
+    hasFreeTrial(admin, parent),
   ]);
 
   const sessionById = new Map((sessions ?? []).map((s) => [s.id, s]));
@@ -99,16 +102,21 @@ export default async function ReviewPage({
       cardPortion: 0,
       feeShare: 0,
       creditShare: 0,
+      trial: false,
     };
   });
 
   const validRows = baseRows.filter((r) => !r.staleReason && r.session);
+  // Mirrors confirmBookings: the free trial goes on the earliest session.
+  const trialRow = freeTrial ? validRows[trialIndex(validRows.map((r) => r.session!))] : undefined;
+  if (trialRow) trialRow.trial = true;
+  const trialPence = trialRow?.session!.price_pence ?? 0;
   const totalSessionPence = validRows.reduce((sum, r) => sum + (r.session?.price_pence ?? 0), 0);
-  const creditAppliedTotal = Math.max(0, Math.min(totalSessionPence, balance));
+  const creditAppliedTotal = Math.max(0, Math.min(totalSessionPence - trialPence, balance));
 
   let remainingCredit = creditAppliedTotal;
   for (const r of validRows) {
-    const price = r.session!.price_pence;
+    const price = r.trial ? 0 : r.session!.price_pence;
     const take = Math.min(remainingCredit, price);
     r.creditShare = take;
     r.cardPortion = price - take;
@@ -135,6 +143,16 @@ export default async function ReviewPage({
           For siblings on the same session, add the session twice - once per player.
         </p>
       </header>
+
+      {freeTrial && (
+        <p className="p-3 bg-[var(--ok-bg)] border border-[var(--ok-line)] text-[var(--ok-fg)] rounded">
+          <strong>Your first session is a free trial.</strong>{' '}
+          {trialRow
+            ? <>We&apos;ve applied it to {formatDate(trialRow.session!.date)} - there&apos;s nothing to pay for that session.</>
+            : <>It&apos;ll be applied to the earliest session in your selection.</>}
+          {validRows.length > 1 && ' The trial covers one session only, so the others are charged as normal.'}
+        </p>
+      )}
 
       {sp.error && (
         <p className="p-3 bg-[var(--danger-bg)] border border-[var(--danger-line)] text-[var(--danger-fg)] rounded">
@@ -210,7 +228,14 @@ export default async function ReviewPage({
                       <span className="text-fg-muted">-</span>
                     ) : (
                       <>
-                        {formatPence(r.session.price_pence)}
+                        {r.trial ? (
+                          <>
+                            <s className="text-fg-muted">{formatPence(r.session.price_pence)}</s>{' '}
+                            <strong className="text-accent">Free trial</strong>
+                          </>
+                        ) : (
+                          formatPence(r.session.price_pence)
+                        )}
                         {r.creditShare > 0 && (
                           <div className="text-xs text-fg-muted">− {formatPence(r.creditShare)} credit</div>
                         )}
@@ -228,6 +253,9 @@ export default async function ReviewPage({
 
         <section className="p-4 border border-line rounded bg-surface max-w-md ml-auto space-y-1">
           <Line label="Sessions" value={formatPence(totalSessionPence)} />
+          {trialPence > 0 && (
+            <Line label="Free trial" value={`− ${formatPence(trialPence)}`} muted />
+          )}
           {creditAppliedTotal > 0 && (
             <Line label="Credit applied" value={`− ${formatPence(creditAppliedTotal)}`} muted />
           )}

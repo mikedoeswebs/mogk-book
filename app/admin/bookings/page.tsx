@@ -244,7 +244,9 @@ export default async function AdminBookingsPage({
                         <span className="text-sm text-fg-muted">{b.parents?.email ?? ''}</span>
                       </>
                     );
-                const methodLabel = b.payment_method ? (METHOD_LABEL[b.payment_method] ?? b.payment_method) : '-';
+                const methodLabel = b.is_free_trial
+                  ? 'Free trial'
+                  : b.payment_method ? (METHOD_LABEL[b.payment_method] ?? b.payment_method) : '-';
                 const cancellable = b.status === 'active' || b.status === 'awaiting_approval' || b.status === 'pending_payment';
                 return (
                   <tr key={b.id}>

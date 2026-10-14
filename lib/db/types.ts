@@ -41,6 +41,8 @@ export interface Parent {
   name: string;
   phone: string | null;
   weekly_emails: boolean;
+  /** Accounts created after the free trial launched; see lib/booking/trial.ts. */
+  free_trial_eligible: boolean;
   terms_accepted_at: string | null;
   created_at: string;
 }
@@ -95,6 +97,7 @@ export interface Booking {
   booking_fee_pence: number;
   payment_method: PaymentMethod | null;
   payment_note: string | null;
+  is_free_trial: boolean;
   is_ghost: boolean;
   trialist_name: string | null;
   attended: boolean | null;

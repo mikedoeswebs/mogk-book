@@ -15,6 +15,7 @@ import {
   sendAdminWaitlistJoin,
 } from '@/lib/email/send';
 import { clearWaitlistForBookings, getRemainingSpaces } from '@/lib/booking/waitlist';
+import { hasFreeTrial, markFreeTrialBooking } from '@/lib/booking/trial';
 import { formatDateLong } from '@/lib/format';
 import type { Session, Child, Booking, Parent } from '@/lib/db/types';
 
@@ -65,8 +66,14 @@ export async function createCheckoutSession(formData: FormData) {
   }
 
   const admin = createSupabaseAdminClient();
-  const balance = await getCreditBalance(admin, parent.id);
-  const { creditApplied, amountToCharge } = applyCredit(session.price_pence, balance);
+  const [balance, freeTrial] = await Promise.all([
+    getCreditBalance(admin, parent.id),
+    hasFreeTrial(admin, parent),
+  ]);
+  // A free trial (new accounts, first booking only) covers the whole session.
+  const { creditApplied, amountToCharge } = freeTrial
+    ? { creditApplied: 0, amountToCharge: 0 }
+    : applyCredit(session.price_pence, balance);
   const feePence = bookingFeeFor(amountToCharge);
   const totalToCharge = amountToCharge + feePence;
   const needsApproval = bookingNeedsApproval(session);
@@ -88,13 +95,24 @@ export async function createCheckoutSession(formData: FormData) {
 
     if (rpcError) redirect(`/sessions/${session.id}?error=${encodeURIComponent(reserveErrorMessage(rpcError.message))}`);
 
+    if (freeTrial) {
+      const trialOk = await markFreeTrialBooking(admin, {
+        parentId: parent.id,
+        sessionId: session.id,
+        childId: child.id,
+      });
+      if (!trialOk) {
+        redirect(`/sessions/${session.id}?error=${encodeURIComponent('Your free trial has already been used. Please try again.')}`);
+      }
+    }
+
     if (bookingId) {
       await clearWaitlistForBookings(admin, [{ session_id: session.id, child_id: child.id }]);
       await sendBookingEmail(parent, child, session, bookingId, 0, creditApplied, needsApproval);
     }
 
     revalidatePath('/bookings');
-    redirect(`/bookings?credit=${creditApplied}`);
+    redirect(freeTrial ? '/bookings?trial=1' : `/bookings?credit=${creditApplied}`);
   }
 
   // ----- Scenario B: Stripe Checkout for the remaining amount ------------

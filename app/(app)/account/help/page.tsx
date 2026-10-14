@@ -21,6 +21,7 @@ export default async function HelpPage() {
           <li><a href="#signing-up">Signing up</a></li>
           <li><a href="#adding-players">Adding a player</a></li>
           <li><a href="#booking">Booking sessions</a></li>
+          <li><a href="#free-trial">Your free trial session</a></li>
           <li><a href="#waiting-lists">Waiting lists</a></li>
           <li><a href="#paying">Paying</a></li>
           <li><a href="#fees-credit">Booking fees and account credit</a></li>
@@ -57,6 +58,20 @@ export default async function HelpPage() {
       </p>
       <p>
         On the review screen you assign a player to each session. If you haven&apos;t added players yet, do that first from <Link href="/children">My players</Link>. You can&apos;t checkout without a player attached to every session.
+      </p>
+
+      <h2 id="free-trial" className="text-2xl font-bold mt-8">Your free trial session</h2>
+      <p>
+        New accounts get their <strong>first session free</strong>. There&apos;s nothing to claim: the trial is applied automatically to your first booking, and you&apos;ll see it marked as &quot;Free trial&quot; on the review screen, the session page, your confirmation email and <Link href="/bookings">My bookings</Link>. It can be used on any group&apos;s session.
+      </p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li><strong>One session only.</strong> The trial covers a single session for one player, once per account. If you book several sessions together, it goes on the earliest one and the rest are charged as normal.</li>
+        <li><strong>First booking only.</strong> It can&apos;t be saved for later. Whatever you book first is your trial session.</li>
+        <li><strong>New accounts only.</strong> The free trial is for families who registered after it was introduced. Accounts created before then aren&apos;t eligible.</li>
+        <li><strong>Can&apos;t make it?</strong> Cancel at least 24 hours before the session and your free trial stays available to use on another session. If you cancel within 24 hours, the trial is used up, in the same way a paid session wouldn&apos;t earn credit. If a late trial booking isn&apos;t approved, or we cancel the session, you keep the trial.</li>
+      </ul>
+      <p>
+        There&apos;s no booking fee on a free trial session, as no card payment is taken.
       </p>
 
       <h2 id="waiting-lists" className="text-2xl font-bold mt-8">Waiting lists</h2>
@@ -109,6 +124,9 @@ export default async function HelpPage() {
       </ul>
       <p>
         If we ever cancel a session at our end, you&apos;ll be credited the full amount including the booking fee.
+      </p>
+      <p>
+        Cancelling a <a href="#free-trial">free trial session</a>{' '}works the same way, except there&apos;s no money to credit: cancel 24 hours or more ahead and you keep the trial for another session; cancel within 24 hours and the trial is used.
       </p>
 
       <h2 id="the-24-hour-rules" className="text-2xl font-bold mt-8">The 24-hour rules</h2>

@@ -110,6 +110,9 @@ export default async function SessionRegisterPage({
                           {b.is_ghost && (
                             <span className="ml-1.5 text-xs text-fg-muted/70">(ghost)</span>
                           )}
+                          {b.is_free_trial && (
+                            <span className="ml-1.5 text-xs text-fg-muted/70">(free trial)</span>
+                          )}
                           {b.status === 'awaiting_approval' && (
                             <span className="ml-1.5 text-xs text-[var(--warn-fg)]">awaiting approval</span>
                           )}

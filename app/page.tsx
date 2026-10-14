@@ -19,6 +19,10 @@ export default async function HomePage() {
         <p className="text-lg text-fg-muted">
           Browse our sessions, book your spot and manage your bookings - all in one place.
         </p>
+        <p className="text-lg">
+          New to Club MO/GK? <strong className="text-accent">Your first session is free.</strong>{' '}
+          Register, add your player and book any session as your free trial.
+        </p>
         <div className="flex flex-wrap gap-3 pt-2">
           <Link
             href="/login"

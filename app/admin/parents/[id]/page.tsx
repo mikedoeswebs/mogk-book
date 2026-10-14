@@ -12,6 +12,7 @@ import type {
   Session,
 } from '@/lib/db/types';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
+import { bookingUsesTrial } from '@/lib/booking/trial';
 import { adjustCredit, claimGhost } from './actions';
 import { DeleteChildButton } from './DeleteChildButton';
 import { DeleteParentButton } from './DeleteParentButton';
@@ -171,6 +172,14 @@ export default async function AdminParentDetailPage({
 
   const totalGhosts = ghostRows.length;
 
+  const trialStatus = !parent.free_trial_eligible
+    ? null
+    : (bookings ?? []).some((b) => b.is_free_trial && bookingUsesTrial(b))
+    ? 'Free trial booked'
+    : (bookings ?? []).some(bookingUsesTrial)
+    ? 'No free trial (first booking was paid)'
+    : 'Free trial available';
+
   const sortedBookings = (bookings ?? []).slice().sort((a, b) => {
     const dateCmp = b.sessions.date.localeCompare(a.sessions.date);
     if (dateCmp !== 0) return dateCmp;
@@ -200,6 +209,7 @@ export default async function AdminParentDetailPage({
             {parent.email}
             {parent.phone ? ` - ${parent.phone}` : ''}
           </p>
+          {trialStatus && <p className="text-sm text-fg-muted">{trialStatus}</p>}
         </div>
         <DeleteParentButton
           parentId={parent.id}
@@ -350,7 +360,7 @@ export default async function AdminParentDetailPage({
                   <tr key={b.id}>
                     <td>{formatDate(b.sessions.date)}</td>
                     <td>{STATUS_LABEL[b.status]}</td>
-                    <td>{formatPence(b.amount_pence)}</td>
+                    <td>{b.is_free_trial ? 'Free trial' : formatPence(b.amount_pence)}</td>
                   </tr>
                 ))}
               </tbody>

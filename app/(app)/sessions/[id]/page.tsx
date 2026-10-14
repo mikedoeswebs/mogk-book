@@ -6,6 +6,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCreditBalance, applyCredit } from '@/lib/booking/credits';
 import { bookingFeeFor } from '@/lib/booking/fees';
 import { bookingNeedsApproval, sessionIsPast } from '@/lib/booking/rules';
+import { hasFreeTrial } from '@/lib/booking/trial';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
@@ -48,8 +49,14 @@ export default async function SessionDetailPage({
     ?.remaining ?? session.capacity;
 
   const admin = createSupabaseAdminClient();
-  const balance = await getCreditBalance(admin, parent.id);
-  const { creditApplied, amountToCharge } = applyCredit(session.price_pence, balance);
+  const [balance, freeTrial] = await Promise.all([
+    getCreditBalance(admin, parent.id),
+    hasFreeTrial(admin, parent),
+  ]);
+  // Mirrors createCheckoutSession: a free trial covers the whole session.
+  const { creditApplied, amountToCharge } = freeTrial
+    ? { creditApplied: 0, amountToCharge: 0 }
+    : applyCredit(session.price_pence, balance);
   const feePence = bookingFeeFor(amountToCharge);
   const totalToCharge = amountToCharge + feePence;
   const needsApproval = bookingNeedsApproval(session);
@@ -88,7 +95,7 @@ export default async function SessionDetailPage({
             <dt className="font-bold">Location</dt><dd>{session.location}</dd>
             <dt className="font-bold">{session.coach_name.includes(',') ? 'Coaches' : 'Coach'}</dt><dd>{session.coach_name}</dd>
             {session.age_group && (<><dt className="font-bold">Group</dt><dd>{session.age_group}</dd></>)}
-            <dt className="font-bold">Price</dt><dd>{formatPence(session.price_pence)}</dd>
+            <dt className="font-bold">Price</dt><dd>{formatPence(session.price_pence)}{freeTrial && ' (free with your trial)'}</dd>
             <dt className="font-bold">Availability</dt><dd>{remaining > 0 ? `${remaining} of ${session.capacity} spots left` : 'Sold out'}</dd>
             {session.notes && (<><dt>Notes</dt><dd>{session.notes}</dd></>)}
           </dl>
@@ -101,14 +108,23 @@ export default async function SessionDetailPage({
             </p>
           ) : (
             <>
-              {needsApproval && (
-                <p className="p-3 bg-[var(--warn-bg)] border border-[var(--warn-line)] text-[var(--warn-fg)] rounded">
-                  This session starts in under 24 hours. Your booking will be paid for now but won&apos;t be
-                  confirmed until an admin approves it. If rejected, you&apos;ll be refunded in full.
+              {freeTrial && !sessionClosed && remaining > 0 && (
+                <p className="p-3 bg-[var(--ok-bg)] border border-[var(--ok-line)] text-[var(--ok-fg)] rounded">
+                  <strong>Your first session is a free trial.</strong> Book this session and there&apos;s
+                  nothing to pay. The trial covers one session only.
                 </p>
               )}
 
-              {balance > 0 && (
+              {needsApproval && (
+                <p className="p-3 bg-[var(--warn-bg)] border border-[var(--warn-line)] text-[var(--warn-fg)] rounded">
+                  {freeTrial
+                    ? <>This session starts in under 24 hours, so your booking won&apos;t be confirmed until an admin approves it. If we can&apos;t accept it, your free trial stays available.</>
+                    : <>This session starts in under 24 hours. Your booking will be paid for now but won&apos;t be
+                      confirmed until an admin approves it. If rejected, you&apos;ll be refunded in full.</>}
+                </p>
+              )}
+
+              {balance > 0 && !freeTrial && (
                 <p className="p-3 bg-[var(--info-bg)] border border-[var(--info-line)] text-[var(--info-fg)] rounded">
                   You have <strong>{formatPence(balance)}</strong> in credit.{' '}
                   {creditApplied > 0 && (
@@ -160,6 +176,7 @@ export default async function SessionDetailPage({
                       <h2 className="text-lg font-bold capitalize">Booking more than one?</h2>
                       <p className="text-sm text-fg-muted mt-1">
                         Adding multiple players, or booking several sessions in one go? Build a selection and pay for everything together. A booking fee will apply once for the whole transaction.
+                        {freeTrial && ' Your free trial will be applied to the earliest session in your selection.'}
                       </p>
                     </div>
                     <form action={addToSelection}>
@@ -195,7 +212,9 @@ export default async function SessionDetailPage({
                         className="w-full bg-transparent border border-line text-fg hover:border-accent text-sm font-normal"
                         pendingLabel={totalToCharge === 0 ? 'Confirming…' : 'Redirecting to checkout…'}
                       >
-                        {totalToCharge === 0
+                        {freeTrial
+                          ? 'Book free trial session'
+                          : totalToCharge === 0
                           ? `Confirm booking (${formatPence(creditApplied)} credit)`
                           : creditApplied > 0
                           ? `Quick checkout (${formatPence(totalToCharge)} + ${formatPence(creditApplied)} credit)`
