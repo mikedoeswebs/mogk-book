@@ -8,7 +8,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/client';
 import { applyCredit, getCreditBalance } from '@/lib/booking/credits';
 import { bookingFeeFor } from '@/lib/booking/fees';
-import { bookingNeedsApproval, sessionIsPast } from '@/lib/booking/rules';
+import { bookingNeedsApproval, playerTooOld, playerTooOldMessage, sessionIsPast } from '@/lib/booking/rules';
 import {
   sendBookingConfirmation,
   sendBookingAwaitingApproval,
@@ -52,6 +52,9 @@ export async function createCheckoutSession(formData: FormData) {
     redirect(`/sessions/${sessionId}?error=This+session+has+already+taken+place`);
   }
   if (!child) redirect(`/sessions/${sessionId}?error=Invalid+player+selected`);
+  if (playerTooOld(child, session)) {
+    redirect(`/sessions/${sessionId}?error=${encodeURIComponent(playerTooOldMessage(child, session))}`);
+  }
 
   const { data: duplicate } = await supabase
     .from('bookings')
@@ -203,6 +206,9 @@ export async function joinWaitlist(formData: FormData) {
   if (!child) redirect(`/sessions/${sessionId}?error=Invalid+player+selected`);
   if (session.status !== 'open' || sessionIsPast(session)) {
     redirect(`/sessions/${sessionId}?error=This+session+can+no+longer+be+booked`);
+  }
+  if (playerTooOld(child, session)) {
+    redirect(`/sessions/${sessionId}?error=${encodeURIComponent(`Sorry, ${child.name} is 17 or over, and our sessions are for ages 16 and under, so they can't join this waiting list.`)}`);
   }
   // Only full sessions have a waiting list - otherwise they can just book.
   if ((await getRemainingSpaces(admin, session)) > 0) {

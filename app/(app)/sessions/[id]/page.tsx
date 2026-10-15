@@ -5,9 +5,11 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCreditBalance, applyCredit } from '@/lib/booking/credits';
 import { bookingFeeFor } from '@/lib/booking/fees';
-import { bookingNeedsApproval, sessionIsPast } from '@/lib/booking/rules';
+import { bookingNeedsApproval, playerTooOld, sessionIsPast } from '@/lib/booking/rules';
 import { hasFreeTrial } from '@/lib/booking/trial';
-import { formatDate, formatTime, formatPence } from '@/lib/format';
+import { formatDate, formatDateWeekday, formatTime, formatPence } from '@/lib/format';
+import { AgeWarning, PlayerSelect, type AgeCheckPlayer } from '@/lib/ui/AgeCheck';
+import { ValidatedSubmit } from '../../book/ValidatedSubmit';
 import { ArrowLeft } from '@/lib/ui/Icon';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Child, Session, WaitlistEntry } from '@/lib/db/types';
@@ -64,6 +66,11 @@ export default async function SessionDetailPage({
   const isPast = sessionIsPast(session);
   const sessionClosed = session.status !== 'open';
   const noChildren = !children || children.length === 0;
+  const players = (children ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    tooOld: playerTooOld(c, session),
+  }));
   const inSelection = await countSessionInSelection(session.id);
 
   const { data: waitlist } = await supabase
@@ -162,7 +169,7 @@ export default async function SessionDetailPage({
               ) : remaining <= 0 ? (
                 <WaitlistPanel
                   sessionId={session.id}
-                  players={children ?? []}
+                  players={players}
                   entries={waitlist ?? []}
                 />
               ) : noChildren ? (
@@ -200,15 +207,19 @@ export default async function SessionDetailPage({
                       <input type="hidden" name="session_id" value={session.id} />
                       <label className="block">
                         <span className="block mb-1 text-sm">Book for which player?</span>
-                        <select name="child_id" required className="w-full">
-                          {children!.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name}
-                            </option>
-                          ))}
-                        </select>
+                        <PlayerSelect name="child_id" players={players} className="w-full" />
                       </label>
-                      <SubmitButton
+                      <AgeWarning
+                        rows={[{
+                          selectName: 'child_id',
+                          defaultChildId: players[0].id,
+                          date: session.date,
+                          dateLabel: formatDateWeekday(session.date),
+                          tooOldIds: players.filter((p) => p.tooOld).map((p) => p.id),
+                        }]}
+                        names={Object.fromEntries(players.map((p) => [p.id, p.name]))}
+                      />
+                      <ValidatedSubmit
                         className="w-full bg-transparent border border-line text-fg hover:border-accent text-sm font-normal"
                         pendingLabel={totalToCharge === 0 ? 'Confirming…' : 'Redirecting to checkout…'}
                       >
@@ -219,7 +230,7 @@ export default async function SessionDetailPage({
                           : creditApplied > 0
                           ? `Quick checkout (${formatPence(totalToCharge)} + ${formatPence(creditApplied)} credit)`
                           : `Quick checkout (${formatPence(totalToCharge)})`}
-                      </SubmitButton>
+                      </ValidatedSubmit>
                     </form>
                   </div>
                 </div>
@@ -238,7 +249,7 @@ function WaitlistPanel({
   entries,
 }: {
   sessionId: string;
-  players: Child[];
+  players: AgeCheckPlayer[];
   entries: WaitlistEntry[];
 }) {
   const waitingIds = new Set(entries.map((e) => e.child_id));
@@ -286,15 +297,11 @@ function WaitlistPanel({
           <input type="hidden" name="session_id" value={sessionId} />
           <label className="block">
             <span className="block mb-1 text-sm">Which player?</span>
-            <select name="child_id" required className="w-full">
-              {available.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            <PlayerSelect name="child_id" players={available} className="w-full" />
           </label>
-          <SubmitButton className="w-full" pendingLabel="Joining…">
+          <ValidatedSubmit className="w-full" pendingLabel="Joining…">
             Join waiting list
-          </SubmitButton>
+          </ValidatedSubmit>
         </form>
       )}
     </div>

@@ -1,7 +1,9 @@
-import type { Session } from '@/lib/db/types';
+import type { Child, Session } from '@/lib/db/types';
+import { formatDateLong } from '@/lib/format';
 
 const APPROVAL_WINDOW_HOURS = 24;
 const CANCELLATION_WINDOW_HOURS = 24;
+const MAX_PLAYER_AGE = 16;
 
 export function sessionStartMs(session: Pick<Session, 'starts_at'>): number {
   return new Date(session.starts_at).getTime();
@@ -38,7 +40,36 @@ export function cancellationIssuesCredit(
   return hoursUntilSession(session, nowMs) >= CANCELLATION_WINDOW_HOURS;
 }
 
+/**
+ * Whole years old on a given date (both YYYY-MM-DD). A 29 Feb birthday ticks
+ * over on 1 March in non-leap years, matching UK law.
+ */
+export function ageOnDate(dob: string, date: string): number {
+  const age = Number(date.slice(0, 4)) - Number(dob.slice(0, 4));
+  return date.slice(5) < dob.slice(5) ? age - 1 : age;
+}
+
+/**
+ * Sessions are for players aged 16 and under, judged on the session date so a
+ * 16-year-old can't book past their 17th birthday. No DOB on file = allowed.
+ */
+export function playerTooOld(
+  child: Pick<Child, 'dob'>,
+  session: Pick<Session, 'date'>,
+): boolean {
+  return !!child.dob && ageOnDate(child.dob, session.date) > MAX_PLAYER_AGE;
+}
+
+/** Server-side fallback when an over-age booking gets past the form. */
+export function playerTooOldMessage(
+  child: Pick<Child, 'name'>,
+  session: Pick<Session, 'date'>,
+): string {
+  return `Sorry, ${child.name} is 17 or over on ${formatDateLong(session.date)}, and our sessions are for ages 16 and under.`;
+}
+
 export const RULES = {
   APPROVAL_WINDOW_HOURS,
   CANCELLATION_WINDOW_HOURS,
+  MAX_PLAYER_AGE,
 };

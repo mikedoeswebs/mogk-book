@@ -8,7 +8,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/client';
 import { getCreditBalance } from '@/lib/booking/credits';
 import { calculateBookingFeePence, allocateFeePence } from '@/lib/booking/fees';
-import { bookingNeedsApproval, sessionIsPast } from '@/lib/booking/rules';
+import { bookingNeedsApproval, playerTooOld, playerTooOldMessage, sessionIsPast } from '@/lib/booking/rules';
 import { clearWaitlistForBookings } from '@/lib/booking/waitlist';
 import { hasFreeTrial, markFreeTrialBooking, trialIndex } from '@/lib/booking/trial';
 import {
@@ -102,6 +102,10 @@ export async function confirmBookings(formData: FormData) {
     if (!item.childId) redirect(`/book?error=${encodeURIComponent('Assign a player to every line.')}`);
     if (!validChildIds.has(item.childId!)) {
       redirect(`/book?error=${encodeURIComponent('Invalid player selection.')}`);
+    }
+    const child = (children ?? []).find((c) => c.id === item.childId)!;
+    if (playerTooOld(child, session!)) {
+      redirect(`/book?error=${encodeURIComponent(playerTooOldMessage(child, session!))}`);
     }
     remainingBySession.set(item.sessionId, remaining - 1);
     valid.push({ item, session: session! });

@@ -4,10 +4,11 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCreditBalance } from '@/lib/booking/credits';
 import { calculateBookingFeePence, allocateFeePence } from '@/lib/booking/fees';
-import { sessionIsPast } from '@/lib/booking/rules';
+import { playerTooOld, sessionIsPast } from '@/lib/booking/rules';
 import { hasFreeTrial, trialIndex } from '@/lib/booking/trial';
 import { getSelection, type SelectionItem } from '@/lib/booking/selection';
-import { formatDate, formatTime, formatPence } from '@/lib/format';
+import { formatDate, formatDateWeekday, formatTime, formatPence } from '@/lib/format';
+import { AgeWarning, PlayerSelect, type AgeCheckRow } from '@/lib/ui/AgeCheck';
 import type { Child, Session } from '@/lib/db/types';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { confirmBookings } from './actions';
@@ -133,6 +134,16 @@ export default async function ReviewPage({
   const blockingStale = baseRows.some((r) => r.staleReason);
   const noChildren = !children || children.length === 0;
 
+  const ageRows: AgeCheckRow[] = validRows.map((r) => ({
+    selectName: `child_${r.item.id}`,
+    defaultChildId: r.item.childId ?? '',
+    date: r.session!.date,
+    dateLabel: formatDateWeekday(r.session!.date),
+    tooOldIds: (children ?? []).filter((c) => playerTooOld(c, r.session!)).map((c) => c.id),
+  }));
+  const tooOldIdsByRow = new Map(ageRows.map((a) => [a.selectName, new Set(a.tooOldIds)]));
+  const childNames = Object.fromEntries((children ?? []).map((c) => [c.id, c.name]));
+
   return (
     <div className="space-y-5">
       <header className="space-y-1">
@@ -172,6 +183,7 @@ export default async function ReviewPage({
       )}
 
       <form action={confirmBookings} className="space-y-4">
+        <AgeWarning rows={ageRows} names={childNames} />
         <div className="overflow-x-auto"><table>
           <thead>
             <tr>
@@ -210,17 +222,17 @@ export default async function ReviewPage({
                     {stale ? (
                       <span className="text-fg-muted">-</span>
                     ) : (
-                      <select
+                      <PlayerSelect
                         name={`child_${r.item.id}`}
-                        required
                         defaultValue={r.item.childId ?? ''}
+                        placeholder="Choose a player…"
                         className="w-full"
-                      >
-                        <option value="">Choose a player…</option>
-                        {(children ?? []).map((c) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
+                        players={(children ?? []).map((c) => ({
+                          id: c.id,
+                          name: c.name,
+                          tooOld: !!tooOldIdsByRow.get(`child_${r.item.id}`)?.has(c.id),
+                        }))}
+                      />
                     )}
                   </td>
                   <td>

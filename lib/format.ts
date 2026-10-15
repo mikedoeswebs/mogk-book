@@ -23,6 +23,15 @@ export function formatDateLong(date: string): string {
   });
 }
 
+/** Weekday and date, no year: "Saturday 14 November". */
+export function formatDateWeekday(date: string): string {
+  return new Date(date + 'T00:00:00').toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+}
+
 export function formatTime(time: string): string {
   return time.slice(0, 5);
 }
