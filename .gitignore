@@ -20,6 +20,9 @@
 # db
 /db/
 
+# docs
+/docs/
+
 # production
 /build
 
