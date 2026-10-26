@@ -6,7 +6,7 @@ import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Booking, Child, Parent, Session } from '@/lib/db/types';
-import { updateAdminBooking } from './actions';
+import { moveAdminBooking, updateAdminBooking } from './actions';
 
 type Row = Booking & {
   sessions: Session;
@@ -34,6 +34,30 @@ export default async function EditAdminBookingPage({
 
   if (!booking) notFound();
 
+  const canMove = booking.status === 'active' || booking.status === 'awaiting_approval';
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const { data: sessions } = canMove
+    ? await supabase
+        .from('sessions')
+        .select('*')
+        .eq('status', 'open')
+        .gte('date', todayISO)
+        .neq('id', booking.session_id)
+        .order('date', { ascending: true })
+        .order('start_time', { ascending: true })
+        .returns<Session[]>()
+    : { data: [] as Session[] };
+
+  const remaining = new Map<string, number>();
+  if (sessions && sessions.length > 0) {
+    const { data: availability } = await supabase.rpc('get_session_availability', {
+      p_session_ids: sessions.map((s) => s.id),
+    });
+    for (const a of (availability ?? []) as { session_id: string; remaining: number }[]) {
+      remaining.set(a.session_id, a.remaining);
+    }
+  }
+
   const playerLabel = booking.is_ghost
     ? `${booking.trialist_name ?? 'Trialist'} (ghost)`
     : `${booking.children?.name ?? '-'} (parent: ${booking.parents?.name ?? '-'})`;
@@ -56,7 +80,7 @@ export default async function EditAdminBookingPage({
       </dl>
 
       <p className="text-sm text-fg-muted">
-        To change the session or parent, cancel this booking and create a new one.
+        To change the parent, cancel this booking and create a new one.
       </p>
 
       {sp.error && (
@@ -123,6 +147,37 @@ export default async function EditAdminBookingPage({
 
         <SubmitButton pendingLabel="Saving…">Save changes</SubmitButton>
       </form>
+
+      {canMove && (
+        <form action={moveAdminBooking} className="space-y-3 max-w-md pt-4 border-t border-line">
+          <h2 className="text-lg font-bold">Move to another session</h2>
+          <p className="text-sm text-fg-muted">
+            Moves this place to a different session. No credit or refund is issued and the
+            paid amount stays the same. The parent is not emailed.
+          </p>
+          <input type="hidden" name="id" value={booking.id} />
+          <label className="block">
+            <span className="block mb-1">New session</span>
+            <select name="session_id" required defaultValue="" className="w-full">
+              <option value="">Choose a session…</option>
+              {(sessions ?? []).map((s) => {
+                const left = remaining.get(s.id) ?? s.capacity;
+                const sold = left <= 0;
+                return (
+                  <option key={s.id} value={s.id} disabled={sold}>
+                    {formatDate(s.date)} {formatTime(s.start_time)}
+                    {s.age_group ? ` | ${s.age_group}` : ''}
+                    {' - '}
+                    {sold ? 'Full' : `${left} of ${s.capacity} left`}
+                    {' | '}{formatPence(s.price_pence)}
+                  </option>
+                );
+              })}
+            </select>
+          </label>
+          <SubmitButton pendingLabel="Moving…">Move booking</SubmitButton>
+        </form>
+      )}
     </div>
   );
 }
