@@ -2,11 +2,7 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { formatPence, formatTime } from '@/lib/format';
-import { getPlayerAttendance, type PlayerAttendanceRow } from '@/lib/admin/analytics';
 import { getLapsedPlayers } from '@/lib/admin/lapsed';
-
-const ALL_TIME_START = '2000-01-01';
-const ALL_TIME_END = '2999-12-31';
 
 const MONTH_LABELS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -51,13 +47,10 @@ export default async function AdminDashboardPage() {
   const monthLabel = `${MONTH_LABELS[monthIndex]} ${year}`;
 
   const [
-    { count: allActiveBookings },
     { count: pendingApprovals },
     { data: monthRows },
     { data: upcomingRows },
   ] = await Promise.all([
-    supabase.from('bookings').select('*', { count: 'exact', head: true })
-      .eq('status', 'active'),
     supabase.from('bookings').select('*', { count: 'exact', head: true })
       .eq('status', 'awaiting_approval'),
     supabase.from('sessions').select('id, date, start_time')
@@ -77,7 +70,7 @@ export default async function AdminDashboardPage() {
   const monthIds = monthSessionRows.map((r) => r.id);
   const upcomingIds = upcomingSessionRows.map((r) => r.id);
 
-  const [monthBookings, upcomingBookings, topAttendance, lapsed, waitingCount] = await Promise.all([
+  const [monthBookings, upcomingBookings, lapsed, waitingCount] = await Promise.all([
     monthIds.length === 0
       ? Promise.resolve([] as BookingAmount[])
       : supabase.from('bookings')
@@ -94,7 +87,6 @@ export default async function AdminDashboardPage() {
           .in('session_id', upcomingIds)
           .returns<BookingAmount[]>()
           .then((r) => r.data ?? []),
-    getPlayerAttendance(supabase, ALL_TIME_START, ALL_TIME_END),
     // Same defaults as /admin/players/lapsed.
     getLapsedPlayers(supabase, { months: 6, maxSessions: 2, minWeeksSince: 3 }),
     upcomingIds.length === 0
@@ -210,7 +202,6 @@ export default async function AdminDashboardPage() {
           <Card label="Upcoming sessions" value={upcomingSessionsCount} href="/admin/sessions" />
           <Card label="Upcoming bookings" value={upcomingBookingCount} href="/admin/bookings?status=active" />
           <Card label="Forecast revenue" value={formatPence(upcomingRevenue)} />
-          <Card label="All-time active" value={allActiveBookings ?? 0} href="/admin/bookings?status=active" />
         </div>
       </section>
 
@@ -228,73 +219,7 @@ export default async function AdminDashboardPage() {
           <Card label="On waiting lists" value={waitingCount} href="/admin/sessions" />
         </div>
       </section>
-
-      <TopAttendanceSection rows={topAttendance} />
     </div>
-  );
-}
-
-function TopAttendanceSection({ rows }: { rows: PlayerAttendanceRow[] }) {
-  const topRows = rows.slice(0, 10);
-  const restRows = rows.slice(10);
-
-  return (
-    <section className="space-y-3">
-      <h2 className="font-heading uppercase tracking-wider text-sm text-fg-muted">
-        Attendances (all time)
-      </h2>
-      {rows.length === 0 ? (
-        <p className="text-fg-muted text-sm">No attendance recorded yet.</p>
-      ) : (
-        <>
-          <table>
-            <thead>
-              <tr>
-                <th>Player</th>
-                <th>Attendances</th>
-              </tr>
-            </thead>
-            <tbody>
-              {topRows.map((r) => (
-                <AttendanceRow key={r.player_key} row={r} />
-              ))}
-            </tbody>
-          </table>
-          {restRows.length > 0 && (
-            <details className="border border-line rounded bg-surface">
-              <summary className="cursor-pointer px-3 py-2 font-heading uppercase tracking-wide text-sm font-bold select-none">
-                Show {restRows.length} more
-              </summary>
-              <table>
-                <thead className="sr-only">
-                  <tr>
-                    <th>Player</th>
-                    <th>Attendances</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {restRows.map((r) => (
-                    <AttendanceRow key={r.player_key} row={r} />
-                  ))}
-                </tbody>
-              </table>
-            </details>
-          )}
-        </>
-      )}
-    </section>
-  );
-}
-
-function AttendanceRow({ row }: { row: PlayerAttendanceRow }) {
-  return (
-    <tr>
-      <td>
-        {row.player_name}
-        {row.is_ghost && <span className="ml-1.5 text-xs text-fg-muted/70">(ghost)</span>}
-      </td>
-      <td>{row.attendance_count}</td>
-    </tr>
   );
 }
 

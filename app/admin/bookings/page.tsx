@@ -132,6 +132,7 @@ export default async function AdminBookingsPage({
         <div className="flex gap-4 items-center text-sm">
           <Link href="/admin/bookings/new">+ New booking</Link>
           <Link href="/admin/bookings/export">Export CSV</Link>
+          <Link href="/admin/import">Import historic data</Link>
         </div>
       </div>
 

@@ -68,7 +68,7 @@ export default async function PlayerOfMonthPage({
         </p>
       )}
 
-      <form key={editing} action={savePlayerOfMonth} className="flex flex-wrap items-end gap-3">
+      <form id="award-form" key={editing} action={savePlayerOfMonth} className="flex flex-wrap items-end gap-3 scroll-mt-4">
         <label className="flex flex-col gap-1 text-sm">
           Month
           <input type="month" name="month" required min={FIRST_MONTH} max={months[0]} defaultValue={editing} />
@@ -134,7 +134,7 @@ export default async function PlayerOfMonthPage({
                 </td>
                 <td className="hidden sm:table-cell">{a?.notes ?? ''}</td>
                 <td className="text-right whitespace-nowrap">
-                  <Link className="text-xs font-normal" href={`/admin/players/of-the-month?month=${ym}`}>{a ? 'Edit' : 'Set'}</Link>
+                  <Link className="text-xs font-normal" href={`/admin/players/of-the-month?month=${ym}#award-form`}>{a ? 'Edit' : 'Set'}</Link>
                   {a && (
                     <>
                       <span className="text-xs text-fg-muted mx-1">{' | '}</span>

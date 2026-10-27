@@ -22,6 +22,8 @@ const MONTH_NAMES = [
 
 // The club started in 2023 - no point letting admins navigate further back.
 const MIN_YEAR = 2023;
+const ALL_TIME_START = '2000-01-01';
+const ALL_TIME_END = '2999-12-31';
 
 export default async function AnalyticsPage({
   searchParams,
@@ -43,7 +45,10 @@ export default async function AnalyticsPage({
   const prevYearStart = `${prevYear}-01-01`;
   const prevYearEnd = `${prevYear}-12-31`;
 
-  const [thisYear, lastYear, monthly, coachRows, captainRows, potwRows, playerRows] = await Promise.all([
+  const [
+    thisYear, lastYear, monthly, coachRows, captainRows, potwRows, playerRows,
+    allTimePlayerRows, { count: allTimeActive },
+  ] = await Promise.all([
     getRangeSummary(supabase, thisYearStart, thisYearEnd),
     getRangeSummary(supabase, prevYearStart, prevYearEnd),
     getMonthlyTrend(supabase, thisYearStart, thisYearEnd),
@@ -51,6 +56,8 @@ export default async function AnalyticsPage({
     getCaptainLeaderboard(supabase, thisYearStart, thisYearEnd),
     getPotwLeaderboard(supabase, thisYearStart, thisYearEnd),
     getPlayerAttendance(supabase, thisYearStart, thisYearEnd),
+    getPlayerAttendance(supabase, ALL_TIME_START, ALL_TIME_END),
+    supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'active'),
   ]);
 
   // Index monthly rows by month index (0-11) so we can render a full 12 rows.
@@ -168,7 +175,82 @@ export default async function AnalyticsPage({
       <p className="text-xs text-fg-muted">
         Totals count active bookings. Attended counts only those marked Present on the session report.
       </p>
+
+      <section className="space-y-4 border-t border-line pt-6">
+        <h2 className="text-xl font-bold">All time</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <Link href="/admin/bookings?status=active" className="no-underline!">
+            <div className="p-3 border border-line rounded bg-surface">
+              <div className="text-xs uppercase tracking-wide text-fg-muted">Active bookings</div>
+              <div className="text-2xl font-bold mt-1 text-fg">{allTimeActive ?? 0}</div>
+            </div>
+          </Link>
+        </div>
+        <AllTimeAttendanceTable rows={allTimePlayerRows} />
+      </section>
     </div>
+  );
+}
+
+function AllTimeAttendanceTable({ rows }: { rows: PlayerAttendanceRow[] }) {
+  const topRows = rows.slice(0, 10);
+  const restRows = rows.slice(10);
+
+  return (
+    <section className="space-y-2">
+      <h3 className="text-lg font-bold">Player attendance</h3>
+      {rows.length === 0 ? (
+        <p className="text-fg-muted text-sm">No attendance recorded yet.</p>
+      ) : (
+        <>
+          <table>
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Attendances</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topRows.map((r) => (
+                <AttendanceRow key={r.player_key} row={r} />
+              ))}
+            </tbody>
+          </table>
+          {restRows.length > 0 && (
+            <details className="border border-line rounded bg-surface">
+              <summary className="cursor-pointer px-3 py-2 font-heading uppercase tracking-wide text-sm font-bold select-none">
+                Show {restRows.length} more
+              </summary>
+              <table>
+                <thead className="sr-only">
+                  <tr>
+                    <th>Player</th>
+                    <th>Attendances</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {restRows.map((r) => (
+                    <AttendanceRow key={r.player_key} row={r} />
+                  ))}
+                </tbody>
+              </table>
+            </details>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function AttendanceRow({ row }: { row: PlayerAttendanceRow }) {
+  return (
+    <tr>
+      <td>
+        {row.player_name}
+        {row.is_ghost && <span className="ml-1.5 text-xs text-fg-muted/70">(ghost)</span>}
+      </td>
+      <td>{row.attendance_count}</td>
+    </tr>
   );
 }
 
