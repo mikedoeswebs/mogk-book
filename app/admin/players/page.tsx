@@ -46,7 +46,10 @@ export default async function AdminPlayersPage({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Players</h1>
-        <Link href="/admin/players/lapsed" className="text-sm">Lapsed players &rarr;</Link>
+        <div className="flex gap-4">
+          <Link href="/admin/players/of-the-month" className="text-sm">Player of the Month &rarr;</Link>
+          <Link href="/admin/players/lapsed" className="text-sm">Lapsed players &rarr;</Link>
+        </div>
       </div>
 
       <form className="flex gap-2 max-w-md">

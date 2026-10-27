@@ -54,6 +54,8 @@ export interface Child {
   dob: string | null;
   position: string | null;
   notes: string | null;
+  /** When the parent consented to us holding `notes` (health information). */
+  medical_consent_at: string | null;
   created_at: string;
 }
 

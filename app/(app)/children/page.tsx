@@ -3,7 +3,9 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { formatDob } from '@/lib/format';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Child } from '@/lib/db/types';
+import Link from 'next/link';
 import { addChild, deleteChild } from './actions';
+import { MedicalFields } from './MedicalFields';
 
 export default async function ChildrenPage({
   searchParams,
@@ -41,7 +43,7 @@ export default async function ChildrenPage({
           <tbody>
             {children.map((c) => (
               <tr key={c.id}>
-                <td>{c.name}</td>
+                <td><Link href={`/children/${c.id}`}>{c.name}</Link></td>
                 <td>{c.dob ? formatDob(c.dob) : '-'}</td>
                 <td>{c.notes ?? '-'}</td>
                 <td className="text-right">
@@ -69,15 +71,7 @@ export default async function ChildrenPage({
             <span className="block mb-1">Date of birth</span>
             <input type="date" name="dob" required className="w-full" />
           </label>
-          <label className="block">
-            <span className="block mb-1">Medical or other important information</span>
-            <textarea
-              name="notes"
-              rows={3}
-              className="w-full"
-              placeholder="Allergies, conditions, behavioural notes, anything coaches should know."
-            />
-          </label>
+          <MedicalFields />
           <SubmitButton pendingLabel="Adding…">Add player</SubmitButton>
         </form>
       </section>

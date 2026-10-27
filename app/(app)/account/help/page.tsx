@@ -26,6 +26,7 @@ export default async function HelpPage() {
           <li><a href="#paying">Paying</a></li>
           <li><a href="#fees-credit">Booking fees and account credit</a></li>
           <li><a href="#cancelling">Cancelling a session</a></li>
+          <li><a href="#moving">Moving to another session</a></li>
           <li><a href="#the-24-hour-rules">The 24-hour rules</a></li>
           <li><a href="#account">Managing your account</a></li>
           <li><a href="#emails">Emails you&apos;ll get from us</a></li>
@@ -127,6 +128,11 @@ export default async function HelpPage() {
       </p>
       <p>
         Cancelling a <a href="#free-trial">free trial session</a>{' '}works the same way, except there&apos;s no money to credit: cancel 24 hours or more ahead and you keep the trial for another session; cancel within 24 hours and the trial is used.
+      </p>
+
+      <h2 id="moving" className="text-2xl font-bold mt-8">Moving to another session</h2>
+      <p>
+        If your player can&apos;t make a session, you can move the booking instead of cancelling it. Open <Link href="/bookings">My bookings</Link> and click <strong>Move</strong> next to the booking. You can move to any session at the same price, as long as both sessions are at least 24 hours away. There&apos;s nothing extra to pay and no booking fee, and we&apos;ll email you the new details. For anything else, cancel for credit and book the session you want.
       </p>
 
       <h2 id="the-24-hour-rules" className="text-2xl font-bold mt-8">The 24-hour rules</h2>

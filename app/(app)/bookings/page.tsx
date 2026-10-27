@@ -3,7 +3,7 @@ import { requireParent } from '@/lib/auth/require-parent';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCreditBalance } from '@/lib/booking/credits';
-import { cancellationIssuesCredit, sessionIsPast } from '@/lib/booking/rules';
+import { cancellationIssuesCredit, parentCanMoveBooking, sessionIsPast } from '@/lib/booking/rules';
 import { hasFreeTrial } from '@/lib/booking/trial';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
@@ -48,6 +48,7 @@ export default async function BookingsPage({
     refunded?: string;
     credit?: string;
     dismissed?: string;
+    moved?: string;
     trial?: string;
     trial_kept?: string;
     trial_used?: string;
@@ -90,14 +91,19 @@ export default async function BookingsPage({
     .filter((w) => w.sessions && w.children && !sessionIsPast(w.sessions))
     .sort((a, b) => a.sessions.starts_at.localeCompare(b.sessions.starts_at));
 
-  const sortedBookings = (bookings ?? []).slice().sort((a, b) => {
-    const dateCmp = b.sessions.date.localeCompare(a.sessions.date);
-    if (dateCmp !== 0) return dateCmp;
-    return b.sessions.start_time.localeCompare(a.sessions.start_time);
-  });
-  const bookingsTotal = sortedBookings.length;
+  // Upcoming = still going ahead; everything else (past or cancelled) is history.
+  const all = bookings ?? [];
+  const isUpcoming = (b: BookingWithJoins) =>
+    b.status !== 'cancelled' && !sessionIsPast(b.sessions);
+  const upcoming = all
+    .filter(isUpcoming)
+    .sort((a, b) => a.sessions.starts_at.localeCompare(b.sessions.starts_at));
+  const history = all
+    .filter((b) => !isUpcoming(b))
+    .sort((a, b) => b.sessions.starts_at.localeCompare(a.sessions.starts_at));
+  const bookingsTotal = history.length;
   const bookingTotalPages = Math.max(1, Math.ceil(bookingsTotal / BOOKINGS_PAGE_SIZE));
-  const pagedBookings = sortedBookings.slice(
+  const pagedBookings = history.slice(
     bookingOffset,
     bookingOffset + BOOKINGS_PAGE_SIZE,
   );
@@ -161,9 +167,14 @@ export default async function BookingsPage({
           Unpaid booking removed. If you&apos;d still like to book, start again from Sessions.
         </Banner>
       )}
+      {sp.moved && (
+        <Banner kind="success">
+          Booking moved - we&apos;ve emailed you the new details.
+        </Banner>
+      )}
       {sp.error && <Banner kind="error">{sp.error}</Banner>}
 
-      {bookingsTotal === 0 ? (
+      {all.length === 0 ? (
         <p>
           You don&apos;t have any bookings yet.
           {freeTrial && (
@@ -171,94 +182,36 @@ export default async function BookingsPage({
           )}
         </p>
       ) : (
-        <div className="space-y-3">
-        <div className="overflow-x-auto"><table>
-          <thead>
-            <tr>
-              <th>Session</th>
-              <th>Player</th>
-              <th>Paid</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {pagedBookings.map((b) => {
-              const refundable = cancellationIssuesCredit(b.sessions);
-              const cancellable = b.status === 'active' || b.status === 'awaiting_approval';
-              const statusLabel =
-                b.status === 'cancelled' && b.cancellation_outcome
-                  ? CANCEL_OUTCOME[b.cancellation_outcome]
-                  : STATUS_LABEL[b.status];
-
-              return (
-                <tr key={b.id}>
-                  <td>
-                    {formatDate(b.sessions.date)} {formatTime(b.sessions.start_time)}<br />
-                    <span className="text-sm text-fg-muted">
-                      {b.sessions.coach_name}
-                      {b.sessions.age_group ? ` | ${b.sessions.age_group}` : ''}
-                    </span>
-                  </td>
-                  <td>{b.children.name}</td>
-                  <td>
-                    {b.is_free_trial ? 'Free trial' : formatPence(b.amount_pence)}
-                    {b.booking_fee_pence > 0 && (
-                      <div className="text-xs text-fg-muted">
-                        incl. {formatPence(b.booking_fee_pence)} booking fee
-                      </div>
-                    )}
-                    {b.credit_applied_pence > 0 && (
-                      <div className="text-xs text-fg-muted">
-                        + {formatPence(b.credit_applied_pence)} credit
-                      </div>
-                    )}
-                  </td>
-                  <td>{statusLabel}</td>
-                  <td>
-                    {cancellable && (
-                      <form action={cancelBooking}>
-                        <input type="hidden" name="id" value={b.id} />
-                        <SubmitButton pendingLabel="Cancelling…">
-                          {b.is_free_trial
-                            ? b.status === 'awaiting_approval' || refundable
-                              ? 'Cancel (trial kept)'
-                              : 'Cancel (trial used)'
-                            : b.status === 'awaiting_approval'
-                            ? 'Cancel (full refund)'
-                            : refundable
-                            ? 'Cancel (credit)'
-                            : 'Cancel (no refund)'}
-                        </SubmitButton>
-                      </form>
-                    )}
-                    {b.status === 'pending_payment' && (
-                      <form action={dismissPendingBooking}>
-                        <input type="hidden" name="id" value={b.id} />
-                        <SubmitButton pendingLabel="Dismissing…">Dismiss</SubmitButton>
-                      </form>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table></div>
-        {bookingsTotal > BOOKINGS_PAGE_SIZE && (
-          <nav
-            aria-label="Bookings pagination"
-            className="flex flex-wrap items-center justify-between gap-3"
-          >
-            <p className="text-sm text-fg-muted">
-              Showing {bookingOffset + 1}–{Math.min(bookingOffset + BOOKINGS_PAGE_SIZE, bookingsTotal)} of {bookingsTotal} · Page {bookingPage} of {bookingTotalPages}
-            </p>
-            <div className="flex gap-2 text-sm font-heading uppercase tracking-wide font-bold">
-              <BookingPageLink page={bookingPage - 1} disabled={bookingPage <= 1} label="← Prev" />
-              <BookingPageLink page={bookingPage + 1} disabled={bookingPage >= bookingTotalPages} label="Next →" />
-            </div>
-          </nav>
-        )}
-        </div>
+        <>
+          <section className="space-y-2">
+            <h2 className="text-xl font-bold">Upcoming</h2>
+            {upcoming.length === 0 ? (
+              <p className="text-fg-muted">Nothing booked. <Link href="/sessions">Browse sessions</Link>.</p>
+            ) : (
+              <BookingsTable rows={upcoming} />
+            )}
+          </section>
+          {bookingsTotal > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-xl font-bold">Past and cancelled</h2>
+              <BookingsTable rows={pagedBookings} />
+              {bookingsTotal > BOOKINGS_PAGE_SIZE && (
+                <nav
+                  aria-label="Bookings pagination"
+                  className="flex flex-wrap items-center justify-between gap-3"
+                >
+                  <p className="text-sm text-fg-muted">
+                    Showing {bookingOffset + 1}–{Math.min(bookingOffset + BOOKINGS_PAGE_SIZE, bookingsTotal)} of {bookingsTotal} · Page {bookingPage} of {bookingTotalPages}
+                  </p>
+                  <div className="flex gap-2 text-sm font-heading uppercase tracking-wide font-bold">
+                    <BookingPageLink page={bookingPage - 1} disabled={bookingPage <= 1} label="← Prev" />
+                    <BookingPageLink page={bookingPage + 1} disabled={bookingPage >= bookingTotalPages} label="Next →" />
+                  </div>
+                </nav>
+              )}
+            </section>
+          )}
+        </>
       )}
 
       {upcomingWaitlist.length > 0 && (
@@ -343,6 +296,92 @@ const CREDIT_REASON: Record<CreditEntry['reason'], string> = {
   booking_applied: 'Applied to booking',
   admin_adjustment: 'Admin adjustment',
 };
+
+function BookingsTable({ rows }: { rows: BookingWithJoins[] }) {
+  return (
+    <div className="overflow-x-auto"><table>
+      <thead>
+        <tr>
+          <th>Session</th>
+          <th>Player</th>
+          <th>Paid</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((b) => {
+          const refundable = cancellationIssuesCredit(b.sessions);
+          const cancellable =
+            (b.status === 'active' || b.status === 'awaiting_approval') && !sessionIsPast(b.sessions);
+          const statusLabel =
+            b.status === 'cancelled' && b.cancellation_outcome
+              ? CANCEL_OUTCOME[b.cancellation_outcome]
+              : STATUS_LABEL[b.status];
+
+          return (
+            <tr key={b.id}>
+              <td>
+                {formatDate(b.sessions.date)} {formatTime(b.sessions.start_time)}<br />
+                <span className="text-sm text-fg-muted">
+                  {b.sessions.coach_name}
+                  {b.sessions.age_group ? ` | ${b.sessions.age_group}` : ''}
+                </span>
+              </td>
+              <td>{b.children.name}</td>
+              <td>
+                {b.is_free_trial ? 'Free trial' : formatPence(b.amount_pence)}
+                {b.booking_fee_pence > 0 && (
+                  <div className="text-xs text-fg-muted">
+                    incl. {formatPence(b.booking_fee_pence)} booking fee
+                  </div>
+                )}
+                {b.credit_applied_pence > 0 && (
+                  <div className="text-xs text-fg-muted">
+                    + {formatPence(b.credit_applied_pence)} credit
+                  </div>
+                )}
+              </td>
+              <td>{statusLabel}</td>
+              <td className="space-y-1">
+                {parentCanMoveBooking(b, b.sessions) && (
+                  <Link href={`/bookings/${b.id}/move`} className="block text-sm">Move</Link>
+                )}
+                {cancellable && (
+                  <form action={cancelBooking}>
+                    <input type="hidden" name="id" value={b.id} />
+                    <SubmitButton pendingLabel="Cancelling…">
+                      {b.is_free_trial
+                        ? b.status === 'awaiting_approval' || refundable
+                          ? 'Cancel (trial kept)'
+                          : 'Cancel (trial used)'
+                        : b.status === 'awaiting_approval'
+                        ? 'Cancel (full refund)'
+                        : refundable
+                        ? 'Cancel (credit)'
+                        : 'Cancel (no refund)'}
+                    </SubmitButton>
+                  </form>
+                )}
+                {b.status === 'pending_payment' && (
+                  <form action={dismissPendingBooking}>
+                    <input type="hidden" name="id" value={b.id} />
+                    <SubmitButton pendingLabel="Dismissing…">Dismiss</SubmitButton>
+                  </form>
+                )}
+                {b.stripe_payment_intent_id && b.amount_pence > 0 && (
+                  <a href={`/bookings/${b.id}/receipt`} target="_blank" rel="noopener" className="block text-sm">
+                    Receipt
+                  </a>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table></div>
+  );
+}
 
 function BookingPageLink({
   page,

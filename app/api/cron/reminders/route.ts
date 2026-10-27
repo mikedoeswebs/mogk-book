@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { sendReminder, sendUpcomingSessionPrompt } from '@/lib/email/send';
+import { sendReminder, sendTrialFollowUp, sendUpcomingSessionPrompt } from '@/lib/email/send';
 import type { Booking, Session, Parent, Child } from '@/lib/db/types';
 
 export const runtime = 'nodejs';
@@ -34,9 +34,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: prompts.error }, { status: 500 });
   }
 
+  const yesterday = new Date(now - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const trialFollowUps = await runTrialFollowUps(supabase, yesterday, todayISO);
+  if ('error' in trialFollowUps) {
+    return NextResponse.json({ error: trialFollowUps.error }, { status: 500 });
+  }
+
   return NextResponse.json({
     reminders: { date: tomorrow, ...reminders },
     prompts: { date: dayAfterTomorrow, ...prompts },
+    trialFollowUps: { date: yesterday, ...trialFollowUps },
   });
 }
 
@@ -140,4 +147,56 @@ async function runUpcomingPrompts(
     sent,
     failed: results.length - sent,
   };
+}
+
+// ---- Free trial follow-up (day after the trial) ----
+//
+// Keyed on the trial's session date, so each trial is picked up by exactly one
+// daily run and nothing needs recording. Only for opted-in parents (the same
+// gate as the prompt above), and skipped if they've already booked again or
+// the register marks the player as missed.
+
+async function runTrialFollowUps(supabase: Supabase, yesterday: string, todayISO: string) {
+  const { data: trials, error } = await supabase
+    .from('bookings')
+    .select('parent_id, sessions!session_id!inner(*), children(name), parents!inner(*)')
+    .eq('is_free_trial', true)
+    .eq('status', 'active')
+    .not('attended', 'is', false)
+    .eq('sessions.date', yesterday)
+    .eq('parents.weekly_emails', true)
+    .returns<{ parent_id: string; sessions: Session; children: Pick<Child, 'name'>; parents: Parent }[]>();
+  if (error) return { error: error.message };
+  if (!trials || trials.length === 0) return { trials: 0, sent: 0, failed: 0 };
+
+  const { data: rebooked } = await supabase
+    .from('bookings')
+    .select('parent_id, sessions!session_id!inner(date)')
+    .in('parent_id', trials.map((t) => t.parent_id))
+    .in('status', ['pending_payment', 'awaiting_approval', 'active'])
+    .gte('sessions.date', todayISO)
+    .returns<{ parent_id: string }[]>();
+  const alreadyBooked = new Set((rebooked ?? []).map((b) => b.parent_id));
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+  const due = trials.filter((t) => !alreadyBooked.has(t.parent_id));
+  const results = await Promise.allSettled(
+    due.map(async (t) => {
+      let nextQ = supabase
+        .from('sessions')
+        .select('*')
+        .eq('status', 'open')
+        .eq('start_time', t.sessions.start_time)
+        .gte('date', todayISO)
+        .order('date', { ascending: true })
+        .limit(3);
+      nextQ = t.sessions.age_group === null
+        ? nextQ.is('age_group', null)
+        : nextQ.eq('age_group', t.sessions.age_group);
+      const { data: next } = await nextQ.returns<Session[]>();
+      await sendTrialFollowUp({ parent: t.parents, child: t.children, sessions: next ?? [], siteUrl });
+    }),
+  );
+  const sent = results.filter((r) => r.status === 'fulfilled').length;
+  return { trials: trials.length, sent, failed: results.length - sent };
 }

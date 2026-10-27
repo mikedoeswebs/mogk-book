@@ -355,6 +355,60 @@ Club MO/GK`;
   await send(parent.email, subject, text, html);
 }
 
+// ---------------- Free trial follow-up ----------------
+
+type TrialFollowUpContext = {
+  parent: Parent;
+  child: Pick<Child, 'name'>;
+  /** Next few sessions in the same group, soonest first. May be empty. */
+  sessions: Session[];
+  siteUrl: string;
+};
+
+export async function sendTrialFollowUp(ctx: TrialFollowUpContext) {
+  const { parent, child, sessions, siteUrl } = ctx;
+  const subject = `Thanks for coming along, ${child.name}`;
+  const intro = `Thanks for bringing ${child.name} to their free trial session yesterday. We hope they enjoyed it.`;
+  const next = sessions.length > 0
+    ? `If they'd like to keep going, here are the next sessions in the same group:`
+    : `If they'd like to keep going, new sessions are added to the calendar regularly.`;
+  const policy = 'Book at least 24 hours ahead and the place is confirmed straight away.';
+
+  const lines = sessions.map((s) => `• ${sessionLine(s)} - ${formatPence(s.price_pence)}`);
+  const htmlList = sessions.length > 0
+    ? `<ul>${sessions
+        .map((s) => `<li><strong>${escape(sessionLine(s))}</strong> - ${escape(formatPence(s.price_pence))}</li>`)
+        .join('')}</ul>`
+    : '';
+
+  const text = `Hi ${parent.name},
+
+${intro}
+
+${next}
+${lines.join('\n')}
+
+${policy} Book at ${siteUrl}/sessions
+
+You're getting this because you opted into reminder emails. Turn them off any time at ${siteUrl}/account.
+
+Club MO/GK`;
+
+  const html = `
+    <p>Hi ${escape(parent.name)},</p>
+    <p>${escape(intro)}</p>
+    <p>${escape(next)}</p>
+    ${htmlList}
+    <p>${escape(policy)} <a href="${siteUrl}/sessions">Book now &rarr;</a></p>
+    <p style="font-size:12px;color:#666;margin-top:24px;">
+      You&apos;re receiving this because you opted into our reminder emails.
+      <a href="${siteUrl}/account">Click here</a> to opt out.
+    </p>
+    <p>Club MO/GK</p>
+  `;
+  await send(parent.email, subject, text, html);
+}
+
 // ---------------- Weekly digest ----------------
 
 type WeeklyDigestContext = {

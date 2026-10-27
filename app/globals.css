@@ -108,7 +108,7 @@
   button, input, select, textarea { font: inherit; color: inherit; }
 
   input[type="text"], input[type="email"], input[type="tel"],
-  input[type="number"], input[type="date"], input[type="time"],
+  input[type="number"], input[type="date"], input[type="time"], input[type="month"],
   input[type="password"],
   select, textarea {
     background: var(--surface);

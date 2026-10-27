@@ -1,4 +1,4 @@
-import type { Child, Session } from '@/lib/db/types';
+import type { Booking, Child, Session } from '@/lib/db/types';
 import { formatDateLong } from '@/lib/format';
 
 const APPROVAL_WINDOW_HOURS = 24;
@@ -38,6 +38,33 @@ export function cancellationIssuesCredit(
   nowMs = Date.now(),
 ): boolean {
   return hoursUntilSession(session, nowMs) >= CANCELLATION_WINDOW_HOURS;
+}
+
+/**
+ * Parents can move a confirmed booking themselves while it is still outside
+ * the 24-hour window, to another session at the same price that is also
+ * outside it. Money never changes hands, so anything else goes through
+ * cancel-for-credit or the admin.
+ */
+export function parentCanMoveBooking(
+  booking: Pick<Booking, 'status'>,
+  from: Pick<Session, 'starts_at'>,
+  nowMs = Date.now(),
+): boolean {
+  return booking.status === 'active' && cancellationIssuesCredit(from, nowMs);
+}
+
+export function isParentMoveTarget(
+  from: Pick<Session, 'id' | 'price_pence'>,
+  to: Pick<Session, 'id' | 'price_pence' | 'status' | 'starts_at'>,
+  nowMs = Date.now(),
+): boolean {
+  return (
+    to.id !== from.id &&
+    to.status === 'open' &&
+    to.price_pence === from.price_pence &&
+    !bookingNeedsApproval(to, nowMs)
+  );
 }
 
 /**

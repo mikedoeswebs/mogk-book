@@ -10,9 +10,11 @@ import {
   sendCancellationRefunded,
   sendCancellationFreeTrial,
   sendAdminCancellation,
+  sendBookingConfirmation,
 } from '@/lib/email/send';
 import { getStripe } from '@/lib/stripe/client';
-import { notifyWaitlist } from '@/lib/booking/waitlist';
+import { clearWaitlistForBookings, notifyWaitlist } from '@/lib/booking/waitlist';
+import { isParentMoveTarget, parentCanMoveBooking, playerTooOld } from '@/lib/booking/rules';
 import type { Booking, Session, Parent, Child } from '@/lib/db/types';
 
 type FullBooking = Booking & {
@@ -183,6 +185,69 @@ export async function cancelBooking(formData: FormData) {
     default:
       redirect('/bookings');
   }
+}
+
+// Parent self-service move. The window, price and age rules are checked here;
+// admin_move_booking then locks both rows and re-checks capacity, session
+// status and double booking. Money is untouched, as with an admin move.
+export async function moveBooking(formData: FormData) {
+  const parent = await requireParent();
+  const id = String(formData.get('id') ?? '');
+  const sessionId = String(formData.get('session_id') ?? '');
+  if (!id) redirect('/bookings?error=Missing+booking+id');
+  const back = `/bookings/${id}/move`;
+  if (!sessionId) redirect(`${back}?error=Choose+a+session`);
+
+  const admin = createSupabaseAdminClient();
+  const [{ data: pre }, { data: target }] = await Promise.all([
+    admin
+      .from('bookings')
+      .select('*, sessions!session_id(*), children(*), parents(*)')
+      .eq('id', id)
+      .maybeSingle<FullBooking>(),
+    admin.from('sessions').select('*').eq('id', sessionId).maybeSingle<Session>(),
+  ]);
+
+  if (!pre || pre.parent_id !== parent.id) redirect('/bookings?error=Booking+not+found');
+  if (!parentCanMoveBooking(pre, pre.sessions)) {
+    redirect(`/bookings?error=${encodeURIComponent('Bookings can only be moved up to 24 hours before the session.')}`);
+  }
+  if (!target || !isParentMoveTarget(pre.sessions, target)) {
+    redirect(`${back}?error=${encodeURIComponent('That session isn\'t available to move to.')}`);
+  }
+  if (playerTooOld(pre.children, target)) {
+    redirect(`${back}?error=${encodeURIComponent(`${pre.children.name} is over the age limit on that date.`)}`);
+  }
+
+  const { error } = await admin.rpc('admin_move_booking', {
+    p_booking_id: id,
+    p_session_id: sessionId,
+  });
+  if (error) redirect(`${back}?error=${encodeURIComponent(humaniseMove(error.message))}`);
+
+  await clearWaitlistForBookings(admin, [{ session_id: sessionId, child_id: pre.child_id }]);
+  await notifyWaitlist(admin, [pre.session_id]);
+
+  try {
+    await sendBookingConfirmation({
+      booking: { ...pre, session_id: sessionId, attended: null },
+      session: target,
+      parent: pre.parents,
+      child: pre.children,
+    });
+  } catch (err) {
+    console.error('Move confirmation email failed', err);
+  }
+
+  revalidatePath('/bookings');
+  redirect('/bookings?moved=1');
+}
+
+function humaniseMove(raw: string): string {
+  if (raw.includes('session_full')) return 'That session has just filled up.';
+  if (raw.includes('already_booked')) return 'This player is already booked into that session.';
+  if (raw.includes('session_closed')) return 'That session has been cancelled.';
+  return 'The booking couldn\'t be moved. Please try again.';
 }
 
 function humanise(raw: string): string {
