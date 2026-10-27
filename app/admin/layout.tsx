@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/auth/require-user';
 import { signOut } from '@/app/login/actions';
 import { NavLink } from '@/lib/ui/NavLink';
+import { NavGroup } from '@/lib/ui/NavGroup';
 import { BurgerMenu } from '@/lib/ui/BurgerMenu';
 import Link from 'next/link';
 import { Logo } from '@/lib/ui/Logo';
@@ -19,23 +20,40 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const nav = (
     <>
       <NavLink href="/admin/sessions">Sessions</NavLink>
-      <NavLink href="/admin/bookings" match={['/admin/bookings', '/admin/approvals']}>
-        Bookings
-        {Boolean(pendingApprovals) && (
-          <span
-            className="ml-1.5 inline-block min-w-5 px-1.5 rounded-full bg-accent text-accent-ink text-xs text-center"
-            title={`${pendingApprovals} awaiting approval`}
-          >
-            {pendingApprovals}
-          </span>
-        )}
-      </NavLink>
-      <NavLink href="/admin/parents" match={['/admin/parents', '/admin/players', '/admin/coaches']}>
-        People
-      </NavLink>
-      <NavLink href="/admin/analytics" match={['/admin/analytics', '/admin/income']}>
-        Reports
-      </NavLink>
+      <NavGroup
+        label={
+          <>
+            Bookings
+            {Boolean(pendingApprovals) && (
+              <span
+                className="ml-1.5 inline-block min-w-5 px-1.5 rounded-full bg-accent text-accent-ink text-xs text-center"
+                title={`${pendingApprovals} awaiting approval`}
+              >
+                {pendingApprovals}
+              </span>
+            )}
+          </>
+        }
+        items={[
+          { href: '/admin/bookings', label: 'All bookings' },
+          { href: '/admin/approvals', label: 'Approvals' },
+        ]}
+      />
+      <NavGroup
+        label="People"
+        items={[
+          { href: '/admin/parents', label: 'Parents' },
+          { href: '/admin/players', label: 'Players' },
+          { href: '/admin/coaches', label: 'Coaches' },
+        ]}
+      />
+      <NavGroup
+        label="Reports"
+        items={[
+          { href: '/admin/analytics', label: 'Analytics' },
+          { href: '/admin/income', label: 'Income' },
+        ]}
+      />
     </>
   );
 
