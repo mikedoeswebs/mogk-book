@@ -13,23 +13,26 @@ import type { ReactNode } from 'react';
  *
  * Pass `exact` for routes that should only light up on themselves (e.g. the
  * admin Dashboard at `/admin` shouldn't stay active when you're on
- * `/admin/sessions`).
+ * `/admin/sessions`). Pass `match` when one link stands for several routes
+ * (e.g. People covers parents, players and coaches).
  */
 export function NavLink({
   href,
   children,
   exact = false,
+  match = [href],
   className = '',
 }: {
   href: string;
   children: ReactNode;
   exact?: boolean;
+  match?: string[];
   className?: string;
 }) {
   const pathname = usePathname();
   const isActive = exact
     ? pathname === href
-    : pathname === href || pathname.startsWith(href + '/');
+    : match.some((m) => pathname === m || pathname.startsWith(m + '/'));
 
   return (
     <Link

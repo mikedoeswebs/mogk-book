@@ -4,6 +4,7 @@ export type RangeSummary = {
   slots_count: number;
   sessions_count: number;
   total_players: number;
+  unique_players: number;
   avg_players_slot: number;
   max_players_slot: number;
   attended_players: number;
@@ -15,6 +16,7 @@ export type MonthlyTrendRow = {
   slots_count: number;
   sessions_count: number;
   total_players: number;
+  unique_players: number;
   avg_players_slot: number;
   attended_players: number;
   ghost_players: number;
@@ -35,6 +37,7 @@ export async function getRangeSummary(
     slots_count: 0,
     sessions_count: 0,
     total_players: 0,
+    unique_players: 0,
     avg_players_slot: 0,
     max_players_slot: 0,
     attended_players: 0,

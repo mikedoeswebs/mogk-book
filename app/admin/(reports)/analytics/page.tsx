@@ -47,7 +47,7 @@ export default async function AnalyticsPage({
 
   const [
     thisYear, lastYear, monthly, coachRows, captainRows, potwRows, playerRows,
-    allTimePlayerRows, { count: allTimeActive },
+    allTimePlayerRows, { count: allTimeActive }, allTime,
   ] = await Promise.all([
     getRangeSummary(supabase, thisYearStart, thisYearEnd),
     getRangeSummary(supabase, prevYearStart, prevYearEnd),
@@ -58,6 +58,7 @@ export default async function AnalyticsPage({
     getPlayerAttendance(supabase, thisYearStart, thisYearEnd),
     getPlayerAttendance(supabase, ALL_TIME_START, ALL_TIME_END),
     supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+    getRangeSummary(supabase, ALL_TIME_START, ALL_TIME_END),
   ]);
 
   // Index monthly rows by month index (0-11) so we can render a full 12 rows.
@@ -113,10 +114,11 @@ export default async function AnalyticsPage({
         they count as one session with totals summed across groups.
       </p>
 
-      <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <section className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <Kpi label="Sessions" value={thisYear.slots_count} prev={lastYear.slots_count} />
         <Kpi label="Groups" value={thisYear.sessions_count} prev={lastYear.sessions_count} />
-        <Kpi label="Total players" value={thisYear.total_players} prev={lastYear.total_players} />
+        <Kpi label="Unique players" value={thisYear.unique_players} prev={lastYear.unique_players} />
+        <Kpi label="Bookings" value={thisYear.total_players} prev={lastYear.total_players} />
         <Kpi label="Avg / session" value={thisYear.avg_players_slot} prev={lastYear.avg_players_slot} decimals={2} />
         <Kpi label="Max / session" value={thisYear.max_players_slot} prev={lastYear.max_players_slot} />
         <Kpi label="Ghosts" value={thisYear.ghost_players} prev={lastYear.ghost_players} muted />
@@ -130,7 +132,8 @@ export default async function AnalyticsPage({
             <tr>
               <th>Month</th>
               <th>Sessions</th>
-              <th>Players</th>
+              <th>Unique players</th>
+              <th>Bookings</th>
               <th>Avg / session</th>
               <th>Attended</th>
               <th>Ghosts</th>
@@ -143,6 +146,7 @@ export default async function AnalyticsPage({
                 <tr key={name}>
                   <td>{name} {year}</td>
                   <td>{row?.slots_count ?? 0}</td>
+                  <td>{row?.unique_players ?? 0}</td>
                   <td>{row?.total_players ?? 0}</td>
                   <td>{(row?.avg_players_slot ?? 0).toFixed?.(2) ?? '0.00'}</td>
                   <td>{row?.attended_players ?? 0}</td>
@@ -173,12 +177,17 @@ export default async function AnalyticsPage({
       </div>
 
       <p className="text-xs text-fg-muted">
-        Totals count active bookings. Attended counts only those marked Present on the session report.
+        Bookings counts every active booking, so a player at ten sessions counts ten times; unique players
+        counts them once. Attended counts only those marked Present on the session report.
       </p>
 
       <section className="space-y-4 border-t border-line pt-6">
         <h2 className="text-xl font-bold">All time</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          <div className="p-3 border border-line rounded bg-surface">
+            <div className="text-xs uppercase tracking-wide text-fg-muted">Unique players</div>
+            <div className="text-2xl font-bold mt-1">{allTime.unique_players}</div>
+          </div>
           <Link href="/admin/bookings?status=active" className="no-underline!">
             <div className="p-3 border border-line rounded bg-surface">
               <div className="text-xs uppercase tracking-wide text-fg-muted">Active bookings</div>

@@ -5,9 +5,39 @@ import { BurgerMenu } from '@/lib/ui/BurgerMenu';
 import Link from 'next/link';
 import { Logo } from '@/lib/ui/Logo';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await requireAdmin();
+  const { count: pendingApprovals } = await createSupabaseAdminClient()
+    .from('bookings')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'awaiting_approval');
+
+  // One list for both the desktop row and the mobile drawer. The logo links
+  // to the dashboard, so it doesn't need its own item.
+  const nav = (
+    <>
+      <NavLink href="/admin/sessions">Sessions</NavLink>
+      <NavLink href="/admin/bookings" match={['/admin/bookings', '/admin/approvals']}>
+        Bookings
+        {Boolean(pendingApprovals) && (
+          <span
+            className="ml-1.5 inline-block min-w-5 px-1.5 rounded-full bg-accent text-accent-ink text-xs text-center"
+            title={`${pendingApprovals} awaiting approval`}
+          >
+            {pendingApprovals}
+          </span>
+        )}
+      </NavLink>
+      <NavLink href="/admin/parents" match={['/admin/parents', '/admin/players', '/admin/coaches']}>
+        People
+      </NavLink>
+      <NavLink href="/admin/analytics" match={['/admin/analytics', '/admin/income']}>
+        Reports
+      </NavLink>
+    </>
+  );
 
   return (
     <div>
@@ -15,7 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="max-w-[1140px] mx-auto px-4">
           {/* Top row: identity + account actions (desktop) or brand + burger (mobile). */}
           <div className="flex flex-wrap items-center gap-4 py-2 md:border-b md:border-line">
-            <Link href="/sessions" className="no-underline text-fg hover:text-accent">
+            <Link href="/admin" className="no-underline text-fg hover:text-accent">
               <Logo size="text-lg" />
               <span className="font-heading uppercase tracking-wide font-normal text-lg text-line mx-3">|</span>
               <span className="font-heading uppercase tracking-wide font-normal text-lg text-accent ml-1">Admin</span>
@@ -42,15 +72,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
             {/* Mobile: burger + drawer with all the bits. */}
             <BurgerMenu className="ml-auto">
-              <NavLink href="/admin" exact>Dashboard</NavLink>
-              <NavLink href="/admin/sessions">Sessions</NavLink>
-              <NavLink href="/admin/coaches">Coaches</NavLink>
-              <NavLink href="/admin/bookings">Bookings</NavLink>
-              <NavLink href="/admin/parents">Parents</NavLink>
-              <NavLink href="/admin/players">Players</NavLink>
-              <NavLink href="/admin/approvals">Approvals</NavLink>
-              <NavLink href="/admin/analytics">Analytics</NavLink>
-              <NavLink href="/admin/income">Income</NavLink>
+              {nav}
               <span className="text-sm text-fg-muted pt-2 border-t border-line">{user.email}</span>
               <NavLink href="/sessions" exact>Parent view</NavLink>
               <form action={signOut}>
@@ -65,15 +87,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
           {/* Desktop nav row. Hidden on mobile (burger covers it). */}
           <nav className="hidden md:flex flex-wrap gap-x-5 gap-y-2 py-3">
-            <NavLink href="/admin" exact>Dashboard</NavLink>
-            <NavLink href="/admin/sessions">Sessions</NavLink>
-            <NavLink href="/admin/coaches">Coaches</NavLink>
-            <NavLink href="/admin/bookings">Bookings</NavLink>
-            <NavLink href="/admin/parents">Parents</NavLink>
-            <NavLink href="/admin/players">Players</NavLink>
-            <NavLink href="/admin/approvals">Approvals</NavLink>
-            <NavLink href="/admin/analytics">Analytics</NavLink>
-            <NavLink href="/admin/income">Income</NavLink>
+            {nav}
           </nav>
         </div>
       </header>
