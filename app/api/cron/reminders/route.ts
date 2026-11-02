@@ -54,6 +54,7 @@ async function runReminders(supabase: Supabase, tomorrow: string) {
     .from('bookings')
     .select('*, sessions!inner(*), children(*), parents(*)')
     .eq('status', 'active')
+    .eq('sessions.status', 'open')
     .eq('sessions.date', tomorrow)
     .returns<(Booking & { sessions: Session; children: Child; parents: Parent })[]>();
 
@@ -163,6 +164,7 @@ async function runTrialFollowUps(supabase: Supabase, yesterday: string, todayISO
     .eq('is_free_trial', true)
     .eq('status', 'active')
     .not('attended', 'is', false)
+    .eq('sessions.status', 'open')
     .eq('sessions.date', yesterday)
     .eq('parents.weekly_emails', true)
     .returns<{ parent_id: string; sessions: Session; children: Pick<Child, 'name'>; parents: Parent }[]>();

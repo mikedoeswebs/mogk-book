@@ -358,7 +358,12 @@ export default async function AdminParentDetailPage({
               <tbody>
                 {pagedBookings.map((b) => (
                   <tr key={b.id}>
-                    <td>{formatDate(b.sessions.date)}</td>
+                    <td>
+                      {formatDate(b.sessions.date)}
+                      {b.sessions.status === 'cancelled' && (
+                        <span className="ml-2 text-xs font-bold uppercase text-[var(--danger-fg)]">Session cancelled</span>
+                      )}
+                    </td>
                     <td>{STATUS_LABEL[b.status]}</td>
                     <td>{b.is_free_trial ? 'Free trial' : formatPence(b.amount_pence)}</td>
                   </tr>

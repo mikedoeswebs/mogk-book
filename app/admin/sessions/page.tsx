@@ -258,7 +258,6 @@ function SlotRow({
 
   const coaches = uniq(sessions.map((s) => s.coach_name));
   const prices = uniq(sessions.map((s) => s.price_pence));
-  const statuses = uniq(sessions.map((s) => s.status));
 
   return (
     <tr className={past ? 'opacity-70' : ''}>
@@ -269,7 +268,9 @@ function SlotRow({
       </td>
       <td className="hidden sm:table-cell align-top">
         {sessions.map((s) => (
-          <div key={s.id}>{s.age_group ?? '-'}</div>
+          <div key={s.id} className={s.status === 'cancelled' ? 'line-through text-fg-muted' : ''}>
+            {s.age_group ?? '-'}
+          </div>
         ))}
       </td>
       <td className="hidden sm:table-cell align-top">
@@ -286,7 +287,11 @@ function SlotRow({
         })}
       </td>
       <td className="hidden sm:table-cell align-top capitalize">
-        {statuses.map((st) => <div key={st}>{st}</div>)}
+        {sessions.map((s) => (
+          <div key={s.id} className={s.status === 'cancelled' ? 'font-bold text-[var(--danger-fg)]' : ''}>
+            {s.status}
+          </div>
+        ))}
       </td>
       <td className="whitespace-nowrap text-right align-top">
         <p>

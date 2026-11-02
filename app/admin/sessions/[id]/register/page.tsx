@@ -58,9 +58,14 @@ export default async function SessionRegisterPage({
     rows.sort((a, b) => playerName(a).localeCompare(playerName(b)));
   }
 
-  const coaches = [...new Set(groups.map((g) => g.coach_name))];
-  const totalConfirmed = (bookings ?? []).filter((b) => b.status === 'active').length;
-  const totalAwaiting = (bookings ?? []).filter((b) => b.status === 'awaiting_approval').length;
+  const cancelledIds = new Set(groups.filter((g) => g.status === 'cancelled').map((g) => g.id));
+  const allCancelled = cancelledIds.size === groups.length;
+  const coaches = [...new Set(groups.filter((g) => !cancelledIds.has(g.id)).map((g) => g.coach_name))];
+  // Bookings on a cancelled group stay active until handled manually, so
+  // they must not count towards who is turning up.
+  const attending = (bookings ?? []).filter((b) => !cancelledIds.has(b.session_id));
+  const totalConfirmed = attending.filter((b) => b.status === 'active').length;
+  const totalAwaiting = attending.filter((b) => b.status === 'awaiting_approval').length;
 
   return (
     <div className="space-y-4">
@@ -68,11 +73,19 @@ export default async function SessionRegisterPage({
 
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-2xl font-bold">Register</h1>
-        <span className="text-sm text-fg-muted">
-          {totalConfirmed} confirmed
-          {totalAwaiting > 0 ? `, ${totalAwaiting} awaiting approval` : ''}
-        </span>
+        {!allCancelled && (
+          <span className="text-sm text-fg-muted">
+            {totalConfirmed} confirmed
+            {totalAwaiting > 0 ? `, ${totalAwaiting} awaiting approval` : ''}
+          </span>
+        )}
       </div>
+
+      {allCancelled && (
+        <p className="p-3 rounded border border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger-fg)] font-bold">
+          This session is cancelled and not taking place.
+        </p>
+      )}
 
       <p className="text-fg-muted">
         {formatDate(session.date)} &middot; {formatTime(session.start_time)}–{formatTime(session.end_time)}
@@ -82,16 +95,29 @@ export default async function SessionRegisterPage({
       {groups.map((g) => {
         const rows = bookingsByGroup.get(g.id) ?? [];
         const confirmed = rows.filter((b) => b.status === 'active').length;
+        const cancelled = cancelledIds.has(g.id);
         return (
           <section key={g.id} className="space-y-2">
             <div className="flex items-baseline justify-between gap-2">
-              <h2 className="text-xl font-bold">{g.age_group ?? 'Group'}</h2>
-              <span className="text-sm text-fg-muted">{confirmed}/{g.capacity}</span>
+              <h2 className={'text-xl font-bold' + (cancelled ? ' line-through text-fg-muted' : '')}>
+                {g.age_group ?? 'Group'}
+              </h2>
+              {cancelled ? (
+                <span className="text-sm font-bold uppercase text-[var(--danger-fg)]">Cancelled</span>
+              ) : (
+                <span className="text-sm text-fg-muted">{confirmed}/{g.capacity}</span>
+              )}
             </div>
+            {cancelled && (
+              <p className="text-sm p-3 rounded border border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger-fg)]">
+                Not taking place.
+                {rows.length > 0 && ' These players were booked before it was cancelled and still need refunding or crediting.'}
+              </p>
+            )}
             {rows.length === 0 ? (
               <p className="text-sm text-fg-muted">No bookings.</p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className={'overflow-x-auto' + (cancelled ? ' opacity-60' : '')}>
                 <table>
                   <thead>
                     <tr>

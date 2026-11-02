@@ -61,6 +61,9 @@ export default async function ApprovalsPage({
                   {formatTime(b.sessions.start_time)} with {b.sessions.coach_name}
                   {b.sessions.age_group ? ` | ${b.sessions.age_group}` : ''}
                   <span className="ml-2 text-sm text-fg-muted">({hrsLabel})</span>
+                  {b.sessions.status === 'cancelled' && (
+                    <span className="ml-2 text-xs font-bold uppercase text-[var(--danger-fg)]">Session cancelled</span>
+                  )}
                 </div>
                 <div>
                   Paid: {formatPence(b.amount_pence)}

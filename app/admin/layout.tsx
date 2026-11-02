@@ -104,7 +104,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
 
           {/* Desktop nav row. Hidden on mobile (burger covers it). */}
-          <nav className="hidden md:flex flex-wrap gap-x-5 gap-y-2 py-3">
+          <nav className="hidden md:flex flex-wrap items-baseline gap-x-5 gap-y-2 py-3">
             {nav}
           </nav>
         </div>

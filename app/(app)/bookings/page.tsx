@@ -312,10 +312,16 @@ function BookingsTable({ rows }: { rows: BookingWithJoins[] }) {
       <tbody>
         {rows.map((b) => {
           const refundable = cancellationIssuesCredit(b.sessions);
+          // A cancelled session leaves its bookings active for the coach to refund
+          // or credit by hand, so the parent's own cancel/move would be wrong here.
+          const sessionCancelled = b.sessions.status === 'cancelled' && b.status !== 'cancelled';
           const cancellable =
-            (b.status === 'active' || b.status === 'awaiting_approval') && !sessionIsPast(b.sessions);
-          const statusLabel =
-            b.status === 'cancelled' && b.cancellation_outcome
+            !sessionCancelled &&
+            (b.status === 'active' || b.status === 'awaiting_approval') &&
+            !sessionIsPast(b.sessions);
+          const statusLabel = sessionCancelled
+            ? 'Session cancelled'
+            : b.status === 'cancelled' && b.cancellation_outcome
               ? CANCEL_OUTCOME[b.cancellation_outcome]
               : STATUS_LABEL[b.status];
 
@@ -342,9 +348,9 @@ function BookingsTable({ rows }: { rows: BookingWithJoins[] }) {
                   </div>
                 )}
               </td>
-              <td>{statusLabel}</td>
+              <td className={sessionCancelled ? 'font-bold text-[var(--danger-fg)]' : ''}>{statusLabel}</td>
               <td className="space-y-1">
-                {parentCanMoveBooking(b, b.sessions) && (
+                {!sessionCancelled && parentCanMoveBooking(b, b.sessions) && (
                   <Link href={`/bookings/${b.id}/move`} className="block text-sm">Move</Link>
                 )}
                 {cancellable && (

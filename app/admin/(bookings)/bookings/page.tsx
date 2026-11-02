@@ -254,6 +254,9 @@ export default async function AdminBookingsPage({
                     <td className="whitespace-nowrap">
                       {formatDate(b.sessions.date)} {formatTime(b.sessions.start_time)}<br />
                       <span className="text-sm text-fg-muted">{b.sessions.coach_name}</span>
+                      {b.sessions.status === 'cancelled' && (
+                        <span className="ml-2 text-xs font-bold uppercase text-[var(--danger-fg)]">Session cancelled</span>
+                      )}
                     </td>
                     <td>
                       {playerName}
