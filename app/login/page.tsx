@@ -9,7 +9,7 @@ export default async function LoginPage({
   searchParams: Promise<{ sent?: string; error?: string }>;
 }) {
   const user = await getCurrentUser();
-  if (user) redirect('/sessions');
+  if (user) redirect('/dashboard');
 
   const params = await searchParams;
 

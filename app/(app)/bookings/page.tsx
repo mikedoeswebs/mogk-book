@@ -112,7 +112,7 @@ export default async function BookingsPage({
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">My bookings</h1>
 
-      <section className="p-3 bg-[var(--info-bg)] border border-[var(--info-line)] text-[var(--info-fg)] rounded">
+      <section id="credit" className="p-3 bg-[var(--info-bg)] border border-[var(--info-line)] text-[var(--info-fg)] rounded">
         <strong>Credit balance:</strong> {formatPence(balance)}
         {balance > 0 && (
           <span className="ml-2 text-sm text-fg-muted">

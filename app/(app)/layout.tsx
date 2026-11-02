@@ -21,12 +21,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div>
       <header className="border-b border-line bg-surface">
         <nav className="max-w-[1140px] mx-auto p-4 flex flex-wrap gap-4 items-center">
-          <Link href="/sessions" className="no-underline text-fg hover:text-accent">
+          <Link href="/dashboard" className="no-underline text-fg hover:text-accent">
             <Logo size="text-lg" />
           </Link>
 
           {/* Desktop: divider + inline nav + identity. */}
           <span className="hidden md:inline text-line">|</span>
+          <NavLink href="/dashboard" className="hidden md:inline-block!">Dashboard</NavLink>
           <NavLink href="/sessions" className="hidden md:inline-block!">Sessions</NavLink>
           <NavLink href="/bookings" className="hidden md:inline-block!">My bookings</NavLink>
           <NavLink href="/children" className="hidden md:inline-block!">My players</NavLink>
@@ -51,6 +52,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
           {/* Mobile: burger toggle + drawer. */}
           <BurgerMenu className="ml-auto">
+            <NavLink href="/dashboard">Dashboard</NavLink>
             <NavLink href="/sessions">Sessions</NavLink>
             <NavLink href="/bookings">My bookings</NavLink>
             <NavLink href="/children">My players</NavLink>

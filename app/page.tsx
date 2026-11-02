@@ -6,7 +6,7 @@ import { ArrowRight } from '@/lib/ui/Icon';
 
 export default async function HomePage() {
   const user = await getCurrentUser();
-  if (user) redirect('/sessions');
+  if (user) redirect('/dashboard');
 
   return (
     <main className="max-w-[1140px] mx-auto px-6 py-16 lg:py-24">

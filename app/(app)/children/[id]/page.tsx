@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireParent } from '@/lib/auth/require-parent';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { sessionIsPast } from '@/lib/booking/rules';
+import { MILESTONES, countsAsAttended, nextMilestone } from '@/lib/booking/milestones';
 import { formatDate } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
@@ -10,12 +10,10 @@ import type { Booking, Child, Session } from '@/lib/db/types';
 import { updateChild } from '../actions';
 import { MedicalFields } from '../MedicalFields';
 
-const MILESTONES = [10, 25, 50];
-
-type BookingRow = Pick<Booking, 'id' | 'attended'> & {
+type BookingRow = Pick<Booking, 'id' | 'status' | 'attended'> & {
   sessions: Pick<
     Session,
-    'date' | 'starts_at' | 'age_group' | 'captain_booking_id' | 'player_of_week_booking_id'
+    'date' | 'starts_at' | 'status' | 'age_group' | 'captain_booking_id' | 'player_of_week_booking_id'
   >;
 };
 
@@ -41,7 +39,7 @@ export default async function PlayerPage({
     supabase
       .from('bookings')
       .select(
-        'id, attended, sessions!session_id(date, starts_at, age_group, captain_booking_id, player_of_week_booking_id)',
+        'id, status, attended, sessions!session_id(date, starts_at, status, age_group, captain_booking_id, player_of_week_booking_id)',
       )
       .eq('child_id', id)
       .eq('parent_id', parent.id)
@@ -50,14 +48,12 @@ export default async function PlayerPage({
   ]);
   if (!child) notFound();
 
-  // Same rule as the lapsed-players list: a past, confirmed booking counts
-  // unless the register marks the player as missed.
   const attended = (bookings ?? [])
-    .filter((b) => b.sessions && sessionIsPast(b.sessions) && b.attended !== false)
+    .filter((b) => b.sessions && countsAsAttended(b, b.sessions))
     .sort((a, b) => b.sessions.date.localeCompare(a.sessions.date));
   const count = attended.length;
   const earned = MILESTONES.filter((m) => count >= m);
-  const next = MILESTONES.find((m) => count < m);
+  const next = nextMilestone(count);
 
   const awards = attended.flatMap((b) => [
     ...(b.sessions.captain_booking_id === b.id ? [{ date: b.sessions.date, award: 'Captain' }] : []),

@@ -17,7 +17,7 @@ export default async function OnboardingPage({
     .select('id')
     .eq('id', user.id)
     .maybeSingle();
-  if (parent) redirect('/sessions');
+  if (parent) redirect('/dashboard');
 
   const params = await searchParams;
 

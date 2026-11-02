@@ -5,7 +5,7 @@ import { isAdminEmail } from '@/lib/auth/require-user';
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/sessions';
+  const next = searchParams.get('next') ?? '/dashboard';
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing-code`);
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   let destination = next;
-  if (next === '/sessions') {
+  if (next === '/dashboard') {
     const { data: { user } } = await supabase.auth.getUser();
     if (isAdminEmail(user?.email)) destination = '/admin';
   }
