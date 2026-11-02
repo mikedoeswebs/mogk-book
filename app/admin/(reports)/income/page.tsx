@@ -200,8 +200,9 @@ export default async function IncomePage({
 
       <p className="text-xs text-fg-muted">
         Income counts active bookings (coaching delivered) plus money kept from cancellations made under 24 hours
-        before a session. Cancellations refunded as account credit are not counted — the income reverses when the
-        booking is cancelled, and credit spent on a later booking is counted once, against that booking.
+        before a session. Cancelled sessions are not counted. Cancellations refunded as account credit are not
+        counted either: the income reverses when the booking is cancelled, and credit spent on a later booking is
+        counted once, against that booking.
       </p>
     </div>
   );
