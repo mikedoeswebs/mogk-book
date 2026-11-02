@@ -160,20 +160,21 @@ export default async function AnalyticsPage({
       </section>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <LeaderboardTable
-          title={`Captains - ${year}`}
-          rows={captainRows}
-          emptyHint="No captains recorded this year."
-        />
-        <LeaderboardTable
-          title={`Player of the Week - ${year}`}
-          rows={potwRows}
-          emptyHint="No POTW recorded this year."
-        />
+        <section className="space-y-2">
+          <h2 className="text-xl font-bold">Captains - {year}</h2>
+          <PlayerList rows={captainRows} valueLabel="Awards" emptyHint="No captains recorded this year." />
+        </section>
+        <section className="space-y-2">
+          <h2 className="text-xl font-bold">Player of the Week - {year}</h2>
+          <PlayerList rows={potwRows} valueLabel="Awards" emptyHint="No POTW recorded this year." />
+        </section>
       </div>
       <div className="grid lg:grid-cols-2 gap-6">
         <CoachAttendanceTable rows={coachRows} year={year} />
-        <PlayerAttendanceTable rows={playerRows} year={year} />
+        <section className="space-y-2">
+          <h2 className="text-xl font-bold">Player attendance - {year}</h2>
+          <PlayerList rows={playerRows} valueLabel="Attendances" emptyHint="No attendance recorded this year." />
+        </section>
       </div>
 
       <p className="text-xs text-fg-muted">
@@ -195,70 +196,76 @@ export default async function AnalyticsPage({
             </div>
           </Link>
         </div>
-        <AllTimeAttendanceTable rows={allTimePlayerRows} />
+        <section className="space-y-2">
+          <h3 className="text-lg font-bold">Player attendance</h3>
+          <PlayerList rows={allTimePlayerRows} valueLabel="Attendances" emptyHint="No attendance recorded yet." />
+        </section>
       </section>
     </div>
   );
 }
 
-function AllTimeAttendanceTable({ rows }: { rows: PlayerAttendanceRow[] }) {
-  const topRows = rows.slice(0, 10);
-  const restRows = rows.slice(10);
+type PlayerListRow = AwardLeaderboardRow | PlayerAttendanceRow;
+
+const TOP_N = 10;
+
+/**
+ * Player leaderboard: the top 10 in a table, the rest behind a "Show more"
+ * expander so long lists don't swamp the page.
+ */
+function PlayerList({
+  rows,
+  valueLabel,
+  emptyHint,
+}: {
+  rows: PlayerListRow[];
+  valueLabel: string;
+  emptyHint: string;
+}) {
+  if (rows.length === 0) return <p className="text-fg-muted text-sm">{emptyHint}</p>;
+
+  const topRows = rows.slice(0, TOP_N);
+  const restRows = rows.slice(TOP_N);
+  const head = (
+    <tr>
+      <th>Player</th>
+      <th>{valueLabel}</th>
+    </tr>
+  );
 
   return (
-    <section className="space-y-2">
-      <h3 className="text-lg font-bold">Player attendance</h3>
-      {rows.length === 0 ? (
-        <p className="text-fg-muted text-sm">No attendance recorded yet.</p>
-      ) : (
-        <>
+    <>
+      <table>
+        <thead>{head}</thead>
+        <tbody>
+          {topRows.map((r) => <PlayerListItem key={r.player_key} row={r} />)}
+        </tbody>
+      </table>
+      {restRows.length > 0 && (
+        <details className="border border-line rounded bg-surface">
+          <summary className="cursor-pointer px-3 py-2 font-heading uppercase tracking-wide text-sm font-bold select-none">
+            Show {restRows.length} more
+          </summary>
           <table>
-            <thead>
-              <tr>
-                <th>Player</th>
-                <th>Attendances</th>
-              </tr>
-            </thead>
+            <thead className="sr-only">{head}</thead>
             <tbody>
-              {topRows.map((r) => (
-                <AttendanceRow key={r.player_key} row={r} />
-              ))}
+              {restRows.map((r) => <PlayerListItem key={r.player_key} row={r} />)}
             </tbody>
           </table>
-          {restRows.length > 0 && (
-            <details className="border border-line rounded bg-surface">
-              <summary className="cursor-pointer px-3 py-2 font-heading uppercase tracking-wide text-sm font-bold select-none">
-                Show {restRows.length} more
-              </summary>
-              <table>
-                <thead className="sr-only">
-                  <tr>
-                    <th>Player</th>
-                    <th>Attendances</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {restRows.map((r) => (
-                    <AttendanceRow key={r.player_key} row={r} />
-                  ))}
-                </tbody>
-              </table>
-            </details>
-          )}
-        </>
+        </details>
       )}
-    </section>
+    </>
   );
 }
 
-function AttendanceRow({ row }: { row: PlayerAttendanceRow }) {
+function PlayerListItem({ row }: { row: PlayerListRow }) {
   return (
     <tr>
       <td>
         {row.player_name}
         {row.is_ghost && <span className="ml-1.5 text-xs text-fg-muted/70">(ghost)</span>}
       </td>
-      <td>{row.attendance_count}</td>
+      <td>{'award_count' in row ? row.award_count : row.attendance_count}</td>
     </tr>
   );
 }
@@ -282,76 +289,6 @@ function CoachAttendanceTable({ rows, year }: { rows: CoachAttendanceRow[]; year
               <tr key={r.coach_id}>
                 <td>{r.coach_name}</td>
                 <td>{r.session_count}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </section>
-  );
-}
-
-function PlayerAttendanceTable({ rows, year }: { rows: PlayerAttendanceRow[]; year: number }) {
-  return (
-    <section className="space-y-2">
-      <h2 className="text-xl font-bold">Player attendance - {year}</h2>
-      {rows.length === 0 ? (
-        <p className="text-fg-muted text-sm">No attendance recorded this year.</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Player</th>
-              <th>Attendances</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.player_key}>
-                <td>
-                  {r.player_name}
-                  {r.is_ghost && <span className="ml-1.5 text-xs text-fg-muted/70">(ghost)</span>}
-                </td>
-                <td>{r.attendance_count}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </section>
-  );
-}
-
-function LeaderboardTable({
-  title,
-  rows,
-  emptyHint,
-}: {
-  title: string;
-  rows: AwardLeaderboardRow[];
-  emptyHint: string;
-}) {
-  return (
-    <section className="space-y-2">
-      <h2 className="text-xl font-bold">{title}</h2>
-      {rows.length === 0 ? (
-        <p className="text-fg-muted text-sm">{emptyHint}</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Player</th>
-              <th>Awards</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.player_key}>
-                <td>
-                  {r.player_name}
-                  {r.is_ghost && <span className="ml-1.5 text-xs text-fg-muted/70">(ghost)</span>}
-                </td>
-                <td>{r.award_count}</td>
               </tr>
             ))}
           </tbody>
