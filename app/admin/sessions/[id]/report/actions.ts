@@ -15,6 +15,7 @@ export async function saveSessionReport(formData: FormData) {
   const captainId = String(formData.get('captain_booking_id') ?? '').trim() || null;
   const potwId = String(formData.get('player_of_week_booking_id') ?? '').trim() || null;
   const notes = String(formData.get('session_report_notes') ?? '').trim() || null;
+  const theme = String(formData.get('theme') ?? '').trim() || null;
 
   const admin = createSupabaseAdminClient();
 
@@ -59,12 +60,19 @@ export async function saveSessionReport(formData: FormData) {
     .update({
       captain_booking_id: captainId,
       player_of_week_booking_id: potwId,
-      session_report_notes: notes,
+      theme,
     })
     .eq('id', sessionId);
 
   if (sessionErr) {
     redirect(`/admin/sessions/${sessionId}/report?error=${encodeURIComponent(sessionErr.message)}`);
+  }
+
+  const { error: reportErr } = await admin
+    .from('session_reports')
+    .upsert({ session_id: sessionId, notes, updated_at: new Date().toISOString() });
+  if (reportErr) {
+    redirect(`/admin/sessions/${sessionId}/report?error=${encodeURIComponent(reportErr.message)}`);
   }
 
   revalidatePath(`/admin/sessions/${sessionId}/report`);

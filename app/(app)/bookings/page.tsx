@@ -333,6 +333,11 @@ function BookingsTable({ rows }: { rows: BookingWithJoins[] }) {
                   {b.sessions.coach_name}
                   {b.sessions.age_group ? ` | ${b.sessions.age_group}` : ''}
                 </span>
+                {b.sessions.theme && b.sessions.status === 'open' && (
+                  <span className="block text-sm">
+                    {sessionIsPast(b.sessions) ? 'Worked on' : 'Working on'}: {b.sessions.theme}
+                  </span>
+                )}
               </td>
               <td>{b.children.name}</td>
               <td>

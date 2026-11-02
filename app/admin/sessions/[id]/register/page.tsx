@@ -139,6 +139,9 @@ export default async function SessionRegisterPage({
                           {b.is_free_trial && (
                             <span className="ml-1.5 text-xs text-fg-muted/70">(free trial)</span>
                           )}
+                          {!b.children?.media_consent_at && (
+                            <span className="ml-1.5 text-xs font-bold text-[var(--warn-fg)]">No photos</span>
+                          )}
                           {b.status === 'awaiting_approval' && (
                             <span className="ml-1.5 text-xs text-[var(--warn-fg)]">awaiting approval</span>
                           )}

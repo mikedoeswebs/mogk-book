@@ -6,6 +6,7 @@ import type { Child } from '@/lib/db/types';
 import Link from 'next/link';
 import { addChild, deleteChild } from './actions';
 import { MedicalFields } from './MedicalFields';
+import { MediaConsentField } from './MediaConsentField';
 
 export default async function ChildrenPage({
   searchParams,
@@ -72,6 +73,7 @@ export default async function ChildrenPage({
             <input type="date" name="dob" required className="w-full" />
           </label>
           <MedicalFields />
+          <MediaConsentField />
           <SubmitButton pendingLabel="Adding…">Add player</SubmitButton>
         </form>
       </section>

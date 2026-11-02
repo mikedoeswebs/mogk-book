@@ -19,6 +19,7 @@ export async function updateSession(formData: FormData) {
   const capacity = Number(formData.get('capacity'));
   const price = Number(formData.get('price'));
   const notes = String(formData.get('notes') ?? '').trim() || null;
+  const theme = String(formData.get('theme') ?? '').trim() || null;
   const coachIds = formData.getAll('coach_ids').map((v) => String(v)).filter(Boolean);
 
   if (coachIds.length === 0) {
@@ -42,6 +43,7 @@ export async function updateSession(formData: FormData) {
       capacity,
       price_pence: Math.round(price * 100),
       notes,
+      theme,
     })
     .eq('id', id);
 

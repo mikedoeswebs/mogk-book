@@ -56,6 +56,7 @@ export interface Child {
   notes: string | null;
   /** When the parent consented to us holding `notes` (health information). */
   medical_consent_at: string | null;
+  media_consent_at: string | null;
   created_at: string;
 }
 
@@ -82,7 +83,7 @@ export interface Session {
   location: string;
   captain_booking_id: string | null;
   player_of_week_booking_id: string | null;
-  session_report_notes: string | null;
+  theme: string | null;
   starts_at: string;
   admin_roster_sent_at: string | null;
   created_at: string;

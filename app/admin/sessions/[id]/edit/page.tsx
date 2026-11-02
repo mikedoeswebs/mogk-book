@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ArrowLeft } from '@/lib/ui/Icon';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Booking, Coach, Session, WaitlistEntry } from '@/lib/db/types';
+import { ThemeField } from '../../ThemeField';
 import {
   updateSession,
   cancelSession,
@@ -229,6 +230,7 @@ export default async function EditSessionPage({
             />
           </label>
         </div>
+        <ThemeField value={session.theme} />
         <label className="block">
           <span className="block mb-1">Notes (shown to parents)</span>
           <textarea name="notes" rows={3} defaultValue={session.notes ?? ''} className="w-full" />

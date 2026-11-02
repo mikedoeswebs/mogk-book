@@ -16,6 +16,7 @@ function readPlayerForm(formData: FormData) {
     dob: String(formData.get('dob') ?? '').trim(),
     notes: String(formData.get('notes') ?? '').trim() || null,
     consent: formData.get('medical_consent') === 'on',
+    mediaConsent: formData.get('media_consent') === 'on',
   };
 }
 
@@ -38,6 +39,7 @@ export async function addChild(formData: FormData) {
     dob: f.dob,
     notes: f.notes,
     medical_consent_at: f.notes ? new Date().toISOString() : null,
+    media_consent_at: f.mediaConsent ? new Date().toISOString() : null,
   });
 
   if (error) redirect(`/children?error=${encodeURIComponent(error.message)}`);
@@ -54,10 +56,10 @@ export async function updateChild(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: child } = await supabase
     .from('children')
-    .select('notes, medical_consent_at')
+    .select('notes, medical_consent_at, media_consent_at')
     .eq('id', id)
     .eq('parent_id', parent.id)
-    .maybeSingle<Pick<Child, 'notes' | 'medical_consent_at'>>();
+    .maybeSingle<Pick<Child, 'notes' | 'medical_consent_at' | 'media_consent_at'>>();
   if (!child) redirect('/children?error=Player+not+found');
 
   const f = readPlayerForm(formData);
@@ -73,10 +75,20 @@ export async function updateChild(formData: FormData) {
     : f.consent
     ? new Date().toISOString()
     : child.medical_consent_at;
+  // Keep the original date while consent stays given.
+  const mediaConsentAt = !f.mediaConsent
+    ? null
+    : child.media_consent_at ?? new Date().toISOString();
 
   const { error } = await supabase
     .from('children')
-    .update({ name: f.name, dob: f.dob, notes: f.notes, medical_consent_at: medicalConsentAt })
+    .update({
+      name: f.name,
+      dob: f.dob,
+      notes: f.notes,
+      medical_consent_at: medicalConsentAt,
+      media_consent_at: mediaConsentAt,
+    })
     .eq('id', id)
     .eq('parent_id', parent.id);
 

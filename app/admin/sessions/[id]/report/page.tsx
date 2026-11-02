@@ -7,6 +7,7 @@ import { ArrowLeft } from '@/lib/ui/Icon';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
 import type { Booking, Child, Parent, Session } from '@/lib/db/types';
 import { saveSessionReport } from './actions';
+import { ThemeField } from '../../ThemeField';
 
 type BookingRow = Booking & {
   children: Child | null;
@@ -25,11 +26,10 @@ export default async function SessionReportPage({
   const sp = await searchParams;
   const supabase = createSupabaseAdminClient();
 
-  const { data: session } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle<Session>();
+  const [{ data: session }, { data: report }] = await Promise.all([
+    supabase.from('sessions').select('*').eq('id', id).maybeSingle<Session>(),
+    supabase.from('session_reports').select('notes').eq('session_id', id).maybeSingle<{ notes: string | null }>(),
+  ]);
   if (!session) notFound();
 
   // Pull active bookings AND bookings cancelled within the 24-hour window
@@ -165,12 +165,16 @@ export default async function SessionReportPage({
             </div>
           </section>
 
+          <div className="max-w-2xl">
+            <ThemeField value={session.theme} />
+          </div>
+
           <label className="block max-w-2xl">
             <span className="block mb-1">Session notes (internal)</span>
             <textarea
               name="session_report_notes"
               rows={3}
-              defaultValue={session.session_report_notes ?? ''}
+              defaultValue={report?.notes ?? ''}
               className="w-full"
             />
           </label>

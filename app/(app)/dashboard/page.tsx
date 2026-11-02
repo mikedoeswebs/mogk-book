@@ -10,12 +10,11 @@ import { formatDateWeekday, formatPence, formatTime } from '@/lib/format';
 import { ArrowRight } from '@/lib/ui/Icon';
 import type { Booking, Child, Session } from '@/lib/db/types';
 
-// Explicit columns: parents never need session_report_notes.
-const SESSION_COLS = 'id, date, start_time, end_time, age_group, location, status, starts_at';
+const SESSION_COLS = 'id, date, start_time, end_time, age_group, location, status, starts_at, theme';
 
 type DashSession = Pick<
   Session,
-  'id' | 'date' | 'start_time' | 'end_time' | 'age_group' | 'location' | 'status' | 'starts_at'
+  'id' | 'date' | 'start_time' | 'end_time' | 'age_group' | 'location' | 'status' | 'starts_at' | 'theme'
 >;
 type DashBooking = Pick<Booking, 'id' | 'status' | 'attended' | 'child_id' | 'is_free_trial'> & {
   sessions: DashSession;
@@ -215,6 +214,7 @@ function UpcomingCard({ booking: b }: { booking: DashBooking }) {
         {s.age_group ? ` · ${s.age_group}` : ''}
       </p>
       <p className="text-sm text-fg-muted">{s.location}</p>
+      {s.theme && !cancelled && <p className="text-sm">Working on: {s.theme}</p>}
       <p className="text-sm">
         {b.children?.name}
         {cancelled ? (
