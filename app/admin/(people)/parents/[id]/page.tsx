@@ -13,7 +13,7 @@ import type {
 } from '@/lib/db/types';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { bookingUsesTrial } from '@/lib/booking/trial';
-import { adjustCredit, claimGhost } from './actions';
+import { adjustCredit, claimGhost, setMediaConsent } from './actions';
 import { DeleteChildButton } from './DeleteChildButton';
 import { DeleteParentButton } from './DeleteParentButton';
 
@@ -317,6 +317,7 @@ export default async function AdminParentDetailPage({
                   <th>Name</th>
                   <th>DOB</th>
                   <th>Notes</th>
+                  <th>Photo consent</th>
                   <th></th>
                 </tr>
               </thead>
@@ -326,6 +327,34 @@ export default async function AdminParentDetailPage({
                     <td>{c.name}</td>
                     <td>{c.dob ? `${formatDob(c.dob)} (${ageFromDob(c.dob)})` : '-'}</td>
                     <td>{c.notes ?? '-'}</td>
+                    <td>
+                      <form action={setMediaConsent} className="flex items-center gap-2 text-sm">
+                        <input type="hidden" name="parent_id" value={parent.id} />
+                        <input type="hidden" name="child_id" value={c.id} />
+                        {c.media_consent_at ? (
+                          <>
+                            <span>Given {formatDate(c.media_consent_at.slice(0, 10))}</span>
+                            <input type="hidden" name="withdraw" value="1" />
+                            <SubmitButton className="text-sm" pendingLabel="Saving…">
+                              Withdraw
+                            </SubmitButton>
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              type="date"
+                              name="consent_date"
+                              required
+                              max={new Date().toISOString().slice(0, 10)}
+                              aria-label={`Date ${c.name}'s photo consent was given`}
+                            />
+                            <SubmitButton className="text-sm" pendingLabel="Saving…">
+                              Record
+                            </SubmitButton>
+                          </>
+                        )}
+                      </form>
+                    </td>
                     <td>
                       <DeleteChildButton
                         parentId={parent.id}

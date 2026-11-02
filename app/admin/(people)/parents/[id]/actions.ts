@@ -92,6 +92,44 @@ export async function adminDeleteChild(formData: FormData) {
   );
 }
 
+/**
+ * Record or withdraw photo and video consent on a parent's behalf, e.g. for
+ * players whose consent was given on paper before the app existed. The date is
+ * when consent was actually given, so it can be in the past but not the future.
+ */
+export async function setMediaConsent(formData: FormData) {
+  await requireAdmin();
+  const parentId = String(formData.get('parent_id') ?? '');
+  const childId = String(formData.get('child_id') ?? '');
+  const withdraw = formData.get('withdraw') === '1';
+  const date = String(formData.get('consent_date') ?? '');
+  const back = (key: 'error' | 'success', msg: string) =>
+    redirect(`/admin/parents/${parentId}?${key}=${encodeURIComponent(msg)}`);
+
+  if (!parentId || !childId) back('error', 'Missing fields');
+  if (!withdraw) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) {
+      back('error', 'Enter the date consent was given');
+    }
+    if (date > new Date().toISOString().slice(0, 10)) {
+      back('error', 'Consent date cannot be in the future');
+    }
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('children')
+    .update({ media_consent_at: withdraw ? null : `${date}T00:00:00Z` })
+    .eq('id', childId)
+    .eq('parent_id', parentId)
+    .select('id');
+  if (error) back('error', error.message);
+  if (!data?.length) back('error', 'Player does not belong to this parent');
+
+  revalidatePath(`/admin/parents/${parentId}`);
+  back('success', withdraw ? 'Photo consent withdrawn' : 'Photo consent recorded');
+}
+
 export async function deleteParent(formData: FormData) {
   await requireAdmin();
   const parentId = String(formData.get('parent_id') ?? '');
