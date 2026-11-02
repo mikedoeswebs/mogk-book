@@ -65,7 +65,7 @@ export default async function ChildrenPage({
         <h2 className="text-xl font-bold">Add a player</h2>
         <form action={addChild} className="space-y-3 max-w-md">
           <label className="block">
-            <span className="block mb-1">Name</span>
+            <span className="block mb-1">Full name</span>
             <input type="text" name="name" required className="w-full" />
           </label>
           <label className="block">
