@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
+import { SortHeader, parseSort } from '@/lib/ui/SortHeader';
 import type { Child, Parent } from '@/lib/db/types';
 
 type Row = Child & {
@@ -21,18 +22,23 @@ function calcAge(dob: string): number {
 export default async function AdminPlayersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string; dir?: string }>;
 }) {
   await requireAdmin();
   const sp = await searchParams;
   const q = (sp.q ?? '').trim();
+  const sort = parseSort(sp);
 
   const supabase = createSupabaseAdminClient();
 
   let query = supabase
     .from('children')
     .select('*, parent:parents(id, name, email), bookings:bookings(id)')
-    .order('name', { ascending: true })
+    // A later DOB is a younger player, so age order is the reverse of DOB order.
+    .order(sort.key === 'age' ? 'dob' : 'name', {
+      ascending: sort.key === 'age' ? !sort.asc : sort.asc,
+      nullsFirst: false,
+    })
     .limit(500);
 
   if (q) {
@@ -73,9 +79,15 @@ export default async function AdminPlayersPage({
           <table>
             <thead>
               <tr>
-                <th>Name</th>
-                <th className="hidden sm:table-cell">Age</th>
-                <th className="hidden sm:table-cell">Position</th>
+                <SortHeader label="Name" col="name" sort={sort} path="/admin/players" params={{ q }} />
+                <SortHeader
+                  label="Age"
+                  col="age"
+                  sort={sort}
+                  path="/admin/players"
+                  params={{ q }}
+                  className="hidden sm:table-cell"
+                />
                 <th>Parent</th>
                 <th>Bookings</th>
                 <th></th>
@@ -88,7 +100,6 @@ export default async function AdminPlayersPage({
                   <td className="hidden sm:table-cell whitespace-nowrap">
                     {r.dob ? `${calcAge(r.dob)} yrs` : '—'}
                   </td>
-                  <td className="hidden sm:table-cell">{r.position ?? '—'}</td>
                   <td>
                     {r.parent ? (
                       <Link href={`/admin/parents/${r.parent.id}`} className="text-sm">

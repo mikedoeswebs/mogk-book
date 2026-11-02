@@ -12,6 +12,7 @@ import type {
   Session,
 } from '@/lib/db/types';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
+import { SortHeader, parseSort, sortRows } from '@/lib/ui/SortHeader';
 import { bookingUsesTrial } from '@/lib/booking/trial';
 import { adjustCredit, claimGhost, setMediaConsent } from './actions';
 import { DeleteChildButton } from './DeleteChildButton';
@@ -38,7 +39,14 @@ export default async function AdminParentDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ q?: string; bp?: string; error?: string; success?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    bp?: string;
+    sort?: string;
+    dir?: string;
+    error?: string;
+    success?: string;
+  }>;
 }) {
   await requireAdmin();
   const { id } = await params;
@@ -46,6 +54,7 @@ export default async function AdminParentDetailPage({
   const ghostQ = (sp.q ?? '').trim();
   const bookingPage = Math.max(1, Number.parseInt(sp.bp ?? '1', 10) || 1);
   const bookingOffset = (bookingPage - 1) * BOOKINGS_PAGE_SIZE;
+  const sort = parseSort(sp);
 
   const supabase = createSupabaseAdminClient();
 
@@ -314,15 +323,27 @@ export default async function AdminParentDetailPage({
             <table>
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>DOB</th>
+                  <SortHeader
+                    label="Name"
+                    col="name"
+                    sort={sort}
+                    path={`/admin/parents/${parent.id}`}
+                    params={{ q: ghostQ, bp: sp.bp }}
+                  />
+                  <SortHeader
+                    label="DOB"
+                    col="age"
+                    sort={sort}
+                    path={`/admin/parents/${parent.id}`}
+                    params={{ q: ghostQ, bp: sp.bp }}
+                  />
                   <th>Notes</th>
                   <th>Photo consent</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {(children ?? []).map((c) => (
+                {sortRows(children ?? [], sort, { name: (c) => c.name, dob: (c) => c.dob }).map((c) => (
                   <tr key={c.id}>
                     <td>{c.name}</td>
                     <td>{c.dob ? `${formatDob(c.dob)} (${ageFromDob(c.dob)})` : '-'}</td>

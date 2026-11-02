@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { formatDate, formatTime, ageFromDob } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
+import { SortHeader, parseSort, sortRows } from '@/lib/ui/SortHeader';
 import type { Booking, Child, Parent, Session } from '@/lib/db/types';
 
 type RegisterBookingRow = Booking & {
@@ -13,11 +14,14 @@ type RegisterBookingRow = Booking & {
 
 export default async function SessionRegisterPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ sort?: string; dir?: string }>;
 }) {
   await requireAdmin();
   const { id } = await params;
+  const sort = parseSort(await searchParams);
   const supabase = createSupabaseAdminClient();
 
   const { data: session } = await supabase
@@ -54,8 +58,11 @@ export default async function SessionRegisterPage({
   for (const b of bookings ?? []) {
     bookingsByGroup.get(b.session_id)?.push(b);
   }
-  for (const rows of bookingsByGroup.values()) {
-    rows.sort((a, b) => playerName(a).localeCompare(playerName(b)));
+  for (const [groupId, rows] of bookingsByGroup) {
+    bookingsByGroup.set(
+      groupId,
+      sortRows(rows, sort, { name: playerName, dob: (b) => b.children?.dob }),
+    );
   }
 
   const cancelledIds = new Set(groups.filter((g) => g.status === 'cancelled').map((g) => g.id));
@@ -121,9 +128,8 @@ export default async function SessionRegisterPage({
                 <table>
                   <thead>
                     <tr>
-                      <th>Player</th>
-                      <th>Age</th>
-                      <th className="hidden sm:table-cell">Position</th>
+                      <SortHeader label="Player" col="name" sort={sort} path={`/admin/sessions/${id}/register`} />
+                      <SortHeader label="Age" col="age" sort={sort} path={`/admin/sessions/${id}/register`} />
                       <th className="hidden sm:table-cell">Contact</th>
                       <th className="hidden sm:table-cell">Notes</th>
                     </tr>
@@ -147,7 +153,6 @@ export default async function SessionRegisterPage({
                           )}
                         </td>
                         <td>{b.children?.dob ? ageFromDob(b.children.dob) : '-'}</td>
-                        <td className="hidden sm:table-cell">{b.children?.position ?? '-'}</td>
                         <td className="hidden sm:table-cell">{contactFor(b)}</td>
                         <td className="hidden sm:table-cell">{b.children?.notes ?? ''}</td>
                       </tr>

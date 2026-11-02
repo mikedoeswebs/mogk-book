@@ -27,7 +27,6 @@ export default function PrivacyPage() {
       <ul className="list-disc pl-6 space-y-1">
         <li>First name.</li>
         <li>Date of birth (if you give it).</li>
-        <li>Playing position (if you give it).</li>
         <li>Any notes you choose to add, including medical or learning information.</li>
         <li>Which sessions they&apos;re booked into, and any attendance, captain, or player-of-the-week record made by a coach.</li>
       </ul>
