@@ -4,11 +4,11 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCreditBalance } from '@/lib/booking/credits';
 import { hasFreeTrial } from '@/lib/booking/trial';
-import { sessionIsPast } from '@/lib/booking/rules';
+import { rsvpOpen, sessionIsPast } from '@/lib/booking/rules';
 import { MILESTONES, countsAsAttended, nextMilestone } from '@/lib/booking/milestones';
-import { formatDateWeekday, formatPence, formatTime } from '@/lib/format';
+import { formatDateWeekday, formatPence, formatTime, londonToday } from '@/lib/format';
 import { ArrowRight } from '@/lib/ui/Icon';
-import type { Booking, Child, Session } from '@/lib/db/types';
+import type { Booking, Child, ClubEvent, Session } from '@/lib/db/types';
 
 const SESSION_COLS = 'id, date, start_time, end_time, age_group, location, status, starts_at, theme';
 
@@ -28,8 +28,16 @@ export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
 
-  const [{ data: bookingRows }, { data: childRows }, { data: waitRows }, balance, freeTrial] =
-    await Promise.all([
+  const today = londonToday();
+  const [
+    { data: bookingRows },
+    { data: childRows },
+    { data: waitRows },
+    balance,
+    freeTrial,
+    { data: eventRows },
+    { data: rsvpRows },
+  ] = await Promise.all([
       supabase
         .from('bookings')
         .select(`id, status, attended, child_id, is_free_trial, sessions!session_id(${SESSION_COLS}), children(name)`)
@@ -49,6 +57,13 @@ export default async function DashboardPage() {
         .returns<{ id: string; sessions: Pick<Session, 'starts_at'> }[]>(),
       getCreditBalance(admin, parent.id),
       hasFreeTrial(admin, parent),
+      supabase
+        .from('events')
+        .select('id, title, date, rsvp_by, capacity')
+        .gte('date', today)
+        .order('date', { ascending: true })
+        .returns<Pick<ClubEvent, 'id' | 'title' | 'date' | 'rsvp_by' | 'capacity'>[]>(),
+      supabase.from('event_rsvps').select('event_id').eq('parent_id', parent.id),
     ]);
 
   const bookings = (bookingRows ?? []).filter((b) => b.sessions);
@@ -61,6 +76,15 @@ export default async function DashboardPage() {
   const cancelledByUs = upcoming.filter((b) => b.sessions.status === 'cancelled');
   const waiting = (waitRows ?? []).filter((w) => w.sessions && !sessionIsPast(w.sessions)).length;
   const needsConsent = children.filter((c) => c.notes && !c.medical_consent_at);
+  const replied = new Set((rsvpRows ?? []).map((r) => r.event_id));
+  const openInvites = (eventRows ?? []).filter((e) => !replied.has(e.id) && rsvpOpen(e, today));
+  // Don't ask parents to reply to an event that's already full.
+  const limited = openInvites.filter((e) => e.capacity).map((e) => e.id);
+  const { data: takenRows } = limited.length
+    ? await supabase.rpc('get_event_places_taken', { p_event_ids: limited })
+    : { data: [] };
+  const taken = new Map(((takenRows ?? []) as { event_id: string; taken: number }[]).map((r) => [r.event_id, r.taken]));
+  const invites = openInvites.filter((e) => !e.capacity || (taken.get(e.id) ?? 0) < e.capacity);
 
   const attendedByChild = new Map<string, number>();
   for (const b of bookings) {
@@ -98,6 +122,11 @@ export default async function DashboardPage() {
         {needsConsent.map((c) => (
           <Notice key={c.id} kind="warn" href={`/children/${c.id}`} action="Review">
             Please review and confirm {c.name}&apos;s medical information.
+          </Notice>
+        ))}
+        {invites.map((e) => (
+          <Notice key={e.id} kind="info" href={`/events#event-${e.id}`} action="Reply">
+            You&apos;re invited to {e.title} on {formatDateWeekday(e.date)}. Let us know if you can come.
           </Notice>
         ))}
         {freeTrial && children.length > 0 && (

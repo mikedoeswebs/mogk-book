@@ -20,6 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const nav = (
     <>
       <NavLink href="/admin/sessions">Sessions</NavLink>
+      <NavLink href="/admin/events">Events</NavLink>
       <NavGroup
         label={
           <>

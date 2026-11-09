@@ -1,4 +1,4 @@
-import type { Booking, Child, Session } from '@/lib/db/types';
+import type { Booking, Child, ClubEvent, Session } from '@/lib/db/types';
 import { formatDateLong } from '@/lib/format';
 import { sessionsClash } from '@/lib/booking/swap';
 
@@ -122,3 +122,8 @@ export const RULES = {
   CANCELLATION_WINDOW_HOURS,
   MAX_PLAYER_AGE,
 };
+
+/** Event replies stay open until the reply-by date, or the event day if there isn't one. */
+export function rsvpOpen(event: Pick<ClubEvent, 'date' | 'rsvp_by'>, today: string): boolean {
+  return today <= (event.rsvp_by ?? event.date);
+}

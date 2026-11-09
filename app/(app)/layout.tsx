@@ -31,6 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <NavLink href="/sessions" className="hidden md:inline-block!">Sessions</NavLink>
           <NavLink href="/bookings" className="hidden md:inline-block!">My bookings</NavLink>
           <NavLink href="/children" className="hidden md:inline-block!">My players</NavLink>
+          <NavLink href="/events" className="hidden md:inline-block!">Events</NavLink>
           <NavLink href="/account/help" className="hidden md:inline-block!">Help</NavLink>
           <Link
             href="/account"
@@ -56,6 +57,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <NavLink href="/sessions">Sessions</NavLink>
             <NavLink href="/bookings">My bookings</NavLink>
             <NavLink href="/children">My players</NavLink>
+            <NavLink href="/events">Events</NavLink>
             <NavLink href="/account">My account</NavLink>
             <NavLink href="/account/help">Help</NavLink>
             <span className="text-sm text-fg-muted pt-2 border-t border-line">{parent.email}</span>

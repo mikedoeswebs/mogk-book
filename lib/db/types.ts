@@ -135,3 +135,29 @@ export interface CreditEntry {
   note: string | null;
   created_at: string;
 }
+
+/** Non-session event, e.g. the Christmas awards night. See migration 029. */
+export interface ClubEvent {
+  id: string;
+  title: string;
+  date: string;
+  start_time: string;
+  end_time: string | null;
+  location: string;
+  description: string | null;
+  /** Last day to reply. Null means replies stay open until the event. */
+  rsvp_by: string | null;
+  /** Max adults + children across all replies. Null means no limit. */
+  capacity: number | null;
+  created_at: string;
+}
+
+/** One per parent per event. 0 adults + 0 children = can't make it. */
+export interface EventRsvp {
+  event_id: string;
+  parent_id: string;
+  adults: number;
+  children: number;
+  notes: string | null;
+  updated_at: string;
+}

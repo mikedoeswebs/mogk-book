@@ -58,3 +58,8 @@ export function ageFromDob(date: string): number {
 export function formatDateTime(dateStr: string, timeStr: string): string {
   return `${formatDate(dateStr)} ${formatTime(timeStr)}`;
 }
+
+/** Today's date in the UK as YYYY-MM-DD, for comparing against date columns. */
+export function londonToday(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+}
