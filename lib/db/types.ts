@@ -57,6 +57,8 @@ export interface Child {
   /** When the parent consented to us holding `notes` (health information). */
   medical_consent_at: string | null;
   media_consent_at: string | null;
+  /** Main record when another parent registered the same player (migration 030). */
+  same_as: string | null;
   created_at: string;
 }
 

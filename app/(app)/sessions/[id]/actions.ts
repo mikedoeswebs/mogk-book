@@ -17,6 +17,7 @@ import {
 import { clearWaitlistForBookings, getRemainingSpaces, notifyWaitlist } from '@/lib/booking/waitlist';
 import { hasFreeTrial, markFreeTrialBooking } from '@/lib/booking/trial';
 import { swapAmounts } from '@/lib/booking/swap';
+import { bookedPlayerKeys } from '@/lib/booking/same-player';
 import { formatDateLong, formatTime } from '@/lib/format';
 import type { Session, Child, Booking, Parent } from '@/lib/db/types';
 
@@ -57,19 +58,11 @@ export async function createCheckoutSession(formData: FormData) {
     redirect(`/sessions/${sessionId}?error=${encodeURIComponent(playerTooOldMessage(child, session))}`);
   }
 
-  const { data: duplicate } = await supabase
-    .from('bookings')
-    .select('id')
-    .eq('session_id', sessionId)
-    .eq('child_id', childId)
-    .in('status', ['pending_payment', 'awaiting_approval', 'active'])
-    .maybeSingle();
-
-  if (duplicate) {
+  const admin = createSupabaseAdminClient();
+  if ((await bookedPlayerKeys(admin, [childId], [sessionId])).size > 0) {
     redirect(`/sessions/${sessionId}?error=${encodeURIComponent(`${child.name} is already booked on this session.`)}`);
   }
 
-  const admin = createSupabaseAdminClient();
   const [balance, freeTrial] = await Promise.all([
     getCreditBalance(admin, parent.id),
     hasFreeTrial(admin, parent),
@@ -330,14 +323,7 @@ export async function joinWaitlist(formData: FormData) {
     redirect(`/sessions/${sessionId}?error=${encodeURIComponent('A space is available - you can book it now.')}`);
   }
 
-  const { data: duplicate } = await admin
-    .from('bookings')
-    .select('id')
-    .eq('session_id', sessionId)
-    .eq('child_id', childId)
-    .in('status', ['pending_payment', 'awaiting_approval', 'active'])
-    .maybeSingle();
-  if (duplicate) {
+  if ((await bookedPlayerKeys(admin, [childId], [sessionId])).size > 0) {
     redirect(`/sessions/${sessionId}?error=${encodeURIComponent(`${child.name} is already booked on this session.`)}`);
   }
 

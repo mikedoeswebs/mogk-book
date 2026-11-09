@@ -10,6 +10,7 @@ import { getCreditBalance } from '@/lib/booking/credits';
 import { calculateBookingFeePence, allocateFeePence } from '@/lib/booking/fees';
 import { bookingNeedsApproval, playerTooOld, playerTooOldMessage, sessionIsPast } from '@/lib/booking/rules';
 import { clearWaitlistForBookings } from '@/lib/booking/waitlist';
+import { bookedPlayerKeys } from '@/lib/booking/same-player';
 import { hasFreeTrial, markFreeTrialBooking, trialIndex } from '@/lib/booking/trial';
 import {
   getSelection,
@@ -71,16 +72,11 @@ export async function confirmBookings(formData: FormData) {
     remainingBySession.set(a.session_id, a.remaining);
   }
 
-  // Block duplicate bookings: same child already booked for the same session.
-  const childIdsToCheck = fresh.items.map((i) => i.childId).filter(Boolean) as string[];
+  // Block duplicate bookings: same player already booked for the same session,
+  // including by another parent who registered them too.
+  const childIdsToCheck = fresh.items.map((i) => i.childId).filter((id): id is string => !!id && validChildIds.has(id));
   if (childIdsToCheck.length > 0) {
-    const { data: existing } = await supabase
-      .from('bookings')
-      .select('session_id, child_id')
-      .in('session_id', sessionIds)
-      .in('child_id', childIdsToCheck)
-      .in('status', ['pending_payment', 'awaiting_approval', 'active']);
-    const bookedPairs = new Set((existing ?? []).map((b) => `${b.session_id}:${b.child_id}`));
+    const bookedPairs = await bookedPlayerKeys(admin, childIdsToCheck, sessionIds);
     for (const item of fresh.items) {
       if (item.childId && bookedPairs.has(`${item.sessionId}:${item.childId}`)) {
         const child = (children ?? []).find((c) => c.id === item.childId);

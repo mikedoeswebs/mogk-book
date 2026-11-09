@@ -29,6 +29,7 @@ type BookingRow = {
   children: {
     id: string;
     name: string;
+    same_as: string | null;
     parents: { id: string; name: string; email: string; phone: string | null } | null;
   } | null;
 };
@@ -60,7 +61,7 @@ export async function getLapsedPlayers(
     const { data, error } = await supabase
       .from('bookings')
       .select(
-        'child_id, status, attended, sessions!session_id(date), children(id, name, parents(id, name, email, phone))',
+        'child_id, status, attended, sessions!session_id(date), children(id, name, same_as, parents(id, name, email, phone))',
       )
       .eq('is_ghost', false)
       .not('child_id', 'is', null)
@@ -77,13 +78,15 @@ export async function getLapsedPlayers(
   const byChild = new Map<string, Acc>();
   for (const r of rows) {
     if (!r.sessions || !r.children?.parents) continue;
-    const acc = byChild.get(r.child_id) ?? { row: r, past: [], hasUpcoming: false };
+    // One entry per player, even if two parents each registered them.
+    const key = r.children.same_as ?? r.child_id;
+    const acc = byChild.get(key) ?? { row: r, past: [], hasUpcoming: false };
     if (r.sessions.date >= today) {
       acc.hasUpcoming = true;
     } else if (r.status === 'active' && r.attended !== false) {
       acc.past.push(r.sessions.date);
     }
-    byChild.set(r.child_id, acc);
+    byChild.set(key, acc);
   }
 
   const result: LapsedPlayer[] = [];
