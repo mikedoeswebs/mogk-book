@@ -14,7 +14,7 @@ import type {
 import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { SortHeader, parseSort, sortRows } from '@/lib/ui/SortHeader';
 import { bookingUsesTrial } from '@/lib/booking/trial';
-import { adjustCredit, claimGhost, setMediaConsent } from './actions';
+import { adjustCredit, claimGhost, setMediaConsent, setSamePlayer } from './actions';
 import { DeleteChildButton } from './DeleteChildButton';
 import { DeleteParentButton } from './DeleteParentButton';
 
@@ -64,6 +64,7 @@ export default async function AdminParentDetailPage({
     { data: balance },
     { data: entries },
     { data: bookings },
+    { data: otherChildren },
   ] = await Promise.all([
     supabase.from('parents').select('*').eq('id', id).maybeSingle<Parent>(),
     supabase
@@ -88,9 +89,19 @@ export default async function AdminParentDetailPage({
       .select('*, sessions!session_id(*)')
       .eq('parent_id', id)
       .returns<(Booking & { sessions: Session })[]>(),
+    // ponytail: every other parent's players for the "same player as" picker;
+    // swap to a name search if this passes PostgREST's 1000-row cap.
+    supabase
+      .from('children')
+      .select('id, name, parent_id, same_as, parents(name)')
+      .neq('parent_id', id)
+      .order('name', { ascending: true })
+      .returns<(Pick<Child, 'id' | 'name' | 'parent_id' | 'same_as'> & { parents: { name: string } | null })[]>(),
   ]);
 
   if (!parent) notFound();
+  const others = otherChildren ?? [];
+  const otherLabel = (o: (typeof others)[number]) => `${o.name} (${o.parents?.name ?? 'unknown parent'})`;
 
   // PostgREST caps a single response at 1000 rows regardless of .limit().
   // Page through until the table is drained so newer ghosts past the first
@@ -339,6 +350,7 @@ export default async function AdminParentDetailPage({
                   />
                   <th>Notes</th>
                   <th>Photo consent</th>
+                  <th>Same player as</th>
                   <th></th>
                 </tr>
               </thead>
@@ -375,6 +387,9 @@ export default async function AdminParentDetailPage({
                           </>
                         )}
                       </form>
+                    </td>
+                    <td className="text-sm">
+                      <SamePlayerCell parentId={parent.id} child={c} others={others} label={otherLabel} />
                     </td>
                     <td>
                       <DeleteChildButton
@@ -589,5 +604,58 @@ function BookingPageLink({
     >
       {label}
     </Link>
+  );
+}
+
+function SamePlayerCell<O extends { id: string; parent_id: string; same_as: string | null }>({
+  parentId,
+  child,
+  others,
+  label,
+}: {
+  parentId: string;
+  child: Child;
+  others: O[];
+  label: (o: O) => string;
+}) {
+  const main = child.same_as ? others.find((o) => o.id === child.same_as) : undefined;
+  if (child.same_as) {
+    return (
+      <form action={setSamePlayer} className="flex items-center gap-2">
+        <input type="hidden" name="parent_id" value={parentId} />
+        <input type="hidden" name="child_id" value={child.id} />
+        {main ? <Link href={`/admin/parents/${main.parent_id}`}>{label(main)}</Link> : <span>Linked record</span>}
+        <SubmitButton className="text-sm" pendingLabel="Saving…">Unlink</SubmitButton>
+      </form>
+    );
+  }
+
+  const linked = others.filter((o) => o.same_as === child.id);
+  if (linked.length > 0) {
+    return (
+      <span>
+        Main record. Also registered as{' '}
+        {linked.map((o, i) => (
+          <span key={o.id}>
+            {i > 0 && ', '}
+            <Link href={`/admin/parents/${o.parent_id}`}>{label(o)}</Link>
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  return (
+    <form action={setSamePlayer} className="flex items-center gap-2">
+      <input type="hidden" name="parent_id" value={parentId} />
+      <input type="hidden" name="child_id" value={child.id} />
+      <select name="same_as" required className="text-sm" aria-label={`Same player as ${child.name}`}>
+        <option value="">Not linked</option>
+        {others.filter((o) => !o.same_as).map((o) => (
+          <option key={o.id} value={o.id}>{label(o)}</option>
+        ))}
+      </select>
+      <SubmitButton className="text-sm" pendingLabel="Saving…">Link</SubmitButton>
+    </form>
   );
 }

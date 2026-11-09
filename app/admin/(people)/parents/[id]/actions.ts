@@ -234,3 +234,51 @@ export async function claimGhost(formData: FormData) {
     )}`,
   );
 }
+
+// Marks this parent's child as the same player as another parent's record
+// (children.same_as), so stats count them once and the player can't be
+// double-booked. Blank same_as unlinks.
+export async function setSamePlayer(formData: FormData) {
+  await requireAdmin();
+  const parentId = String(formData.get('parent_id') ?? '');
+  const childId = String(formData.get('child_id') ?? '');
+  const sameAs = String(formData.get('same_as') ?? '') || null;
+  const back = (key: 'error' | 'success', msg: string) =>
+    redirect(`/admin/parents/${parentId}?${key}=${encodeURIComponent(msg)}`);
+
+  if (!parentId || !childId) back('error', 'Missing fields');
+  const supabase = createSupabaseAdminClient();
+
+  if (sameAs) {
+    // One level only: the main record can't itself be linked, and this
+    // record can't already be the main record for someone else.
+    const [{ data: main }, { count: dependants }] = await Promise.all([
+      supabase.from('children').select('id, parent_id, same_as').eq('id', sameAs).maybeSingle(),
+      supabase.from('children').select('id', { count: 'exact', head: true }).eq('same_as', childId),
+    ]);
+    if (!main || main.parent_id === parentId) back('error', 'Choose a player registered by another parent');
+    if (main!.same_as) back('error', 'That record is already linked to another. Link to its main record instead.');
+    if (dependants) back('error', 'Other records point at this player. Link those to the new main record first.');
+  }
+
+  const { data, error } = await supabase
+    .from('children')
+    .update({ same_as: sameAs })
+    .eq('id', childId)
+    .eq('parent_id', parentId)
+    .select('id');
+  if (error) back('error', error.message);
+  if (!data?.length) back('error', 'Player does not belong to this parent');
+
+  // Player of the Year votes are keyed by player, so carry them across.
+  if (sameAs) {
+    const { error: voteError } = await supabase
+      .from('player_of_year_votes')
+      .update({ player_key: sameAs })
+      .eq('player_key', childId);
+    if (voteError) back('error', `Player linked, but votes weren't moved: ${voteError.message}`);
+  }
+
+  revalidatePath(`/admin/parents/${parentId}`);
+  back('success', sameAs ? 'Player linked' : 'Player unlinked');
+}
