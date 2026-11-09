@@ -54,6 +54,7 @@ export default async function AdminPlayersPage({
         <h1 className="text-2xl font-bold">Players</h1>
         <div className="flex gap-4">
           <Link href="/admin/players/of-the-month" className="text-sm">Player of the Month &rarr;</Link>
+          <Link href="/admin/players/of-the-year" className="text-sm">Player of the Year votes &rarr;</Link>
           <Link href="/admin/players/lapsed" className="text-sm">Lapsed players &rarr;</Link>
         </div>
       </div>
