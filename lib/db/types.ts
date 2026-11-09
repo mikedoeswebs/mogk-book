@@ -110,6 +110,9 @@ export interface Booking {
   cancellation_outcome: CancellationOutcome | null;
   cancellation_requested_at: string | null;
   cancellation_reason: string | null;
+  /** Set on a booking made by swapping out of a clashing one; see migration 028. */
+  swap_from_booking_id: string | null;
+  swap_credit_pence: number;
   created_at: string;
   updated_at: string;
 }

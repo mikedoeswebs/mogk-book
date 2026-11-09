@@ -1,5 +1,6 @@
 import type { Booking, Child, Session } from '@/lib/db/types';
 import { formatDateLong } from '@/lib/format';
+import { sessionsClash } from '@/lib/booking/swap';
 
 const APPROVAL_WINDOW_HOURS = 24;
 const CANCELLATION_WINDOW_HOURS = 24;
@@ -64,6 +65,27 @@ export function isParentMoveTarget(
     to.status === 'open' &&
     to.price_pence === from.price_pence &&
     !bookingNeedsApproval(to, nowMs)
+  );
+}
+
+/**
+ * A confirmed paid booking can be swapped for a space on a clashing session
+ * (e.g. the one the player was on the waiting list for), as long as both are
+ * outside the 24-hour window. Unlike a move, the price may differ.
+ */
+export function canSwap(
+  booking: Pick<Booking, 'status' | 'is_free_trial'>,
+  from: Pick<Session, 'id' | 'date' | 'start_time' | 'end_time' | 'starts_at'>,
+  to: Pick<Session, 'id' | 'date' | 'start_time' | 'end_time' | 'starts_at' | 'status'>,
+  nowMs = Date.now(),
+): boolean {
+  return (
+    booking.status === 'active' &&
+    !booking.is_free_trial &&
+    cancellationIssuesCredit(from, nowMs) &&
+    to.status === 'open' &&
+    !bookingNeedsApproval(to, nowMs) &&
+    sessionsClash(from, to)
   );
 }
 

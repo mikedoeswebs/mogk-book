@@ -8,15 +8,16 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/client';
 import { applyCredit, getCreditBalance } from '@/lib/booking/credits';
 import { bookingFeeFor } from '@/lib/booking/fees';
-import { bookingNeedsApproval, playerTooOld, playerTooOldMessage, sessionIsPast } from '@/lib/booking/rules';
+import { bookingNeedsApproval, canSwap, playerTooOld, playerTooOldMessage, sessionIsPast } from '@/lib/booking/rules';
 import {
   sendBookingConfirmation,
   sendBookingAwaitingApproval,
   sendAdminWaitlistJoin,
 } from '@/lib/email/send';
-import { clearWaitlistForBookings, getRemainingSpaces } from '@/lib/booking/waitlist';
+import { clearWaitlistForBookings, getRemainingSpaces, notifyWaitlist } from '@/lib/booking/waitlist';
 import { hasFreeTrial, markFreeTrialBooking } from '@/lib/booking/trial';
-import { formatDateLong } from '@/lib/format';
+import { swapAmounts } from '@/lib/booking/swap';
+import { formatDateLong, formatTime } from '@/lib/format';
 import type { Session, Child, Booking, Parent } from '@/lib/db/types';
 
 function getSiteUrl() {
@@ -183,6 +184,120 @@ export async function createCheckoutSession(formData: FormData) {
   }
 
   redirect(checkout.url);
+}
+
+// Swap a player's booking on a clashing session for a space on this one.
+// Validated here for friendly errors; start_booking_swap locks both rows and
+// re-checks everything, including the amounts.
+export async function swapBooking(formData: FormData) {
+  const parent = await requireParent();
+  const sessionId = String(formData.get('session_id') ?? '');
+  const fromId = String(formData.get('from_booking_id') ?? '');
+  const back = `/sessions/${sessionId}`;
+  if (!sessionId || !fromId) redirect(`${back}?error=Missing+selection`);
+
+  const admin = createSupabaseAdminClient();
+  const [{ data: session }, { data: from }, balance] = await Promise.all([
+    admin.from('sessions').select('*').eq('id', sessionId).maybeSingle<Session>(),
+    admin
+      .from('bookings')
+      .select('*, sessions!session_id(*), children(*)')
+      .eq('id', fromId)
+      .eq('parent_id', parent.id)
+      .maybeSingle<Booking & { sessions: Session; children: Child }>(),
+    getCreditBalance(admin, parent.id),
+  ]);
+
+  if (!session) redirect('/sessions?error=Session+not+found');
+  if (!from || !canSwap(from, from.sessions, session)) {
+    redirect(`${back}?error=${encodeURIComponent('That booking can\'t be swapped to this session.')}`);
+  }
+  if (playerTooOld(from.children, session)) {
+    redirect(`${back}?error=${encodeURIComponent(playerTooOldMessage(from.children, session))}`);
+  }
+
+  const { swapCredit, balanceCredit, card } = swapAmounts(from, session.price_pence, balance);
+  const feePence = bookingFeeFor(card);
+  const rpcArgs = {
+    p_parent_id: parent.id,
+    p_from_booking_id: from.id,
+    p_to_session_id: session.id,
+    p_balance_credit_pence: balanceCredit,
+    p_card_pence: card,
+    p_booking_fee_pence: feePence,
+  };
+
+  // ----- Credit covers it: the swap completes straight away --------------
+  if (card === 0) {
+    const { data: bookingId, error } = await admin.rpc('start_booking_swap', rpcArgs);
+    if (error) redirect(`${back}?error=${encodeURIComponent(swapErrorMessage(error.message))}`);
+
+    await clearWaitlistForBookings(admin, [{ session_id: session.id, child_id: from.child_id }]);
+    await notifyWaitlist(admin, [from.session_id]);
+    if (bookingId) {
+      await sendBookingEmail(parent, from.children, session, bookingId as string, 0, 0, false);
+    }
+    revalidatePath('/bookings');
+    redirect('/bookings?swapped=1');
+  }
+
+  // ----- Top-up by card: the webhook finishes the swap once paid ---------
+  const stripe = getStripe();
+  const siteUrl = getSiteUrl();
+  const checkout = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    payment_method_types: ['card'],
+    customer_email: parent.email,
+    line_items: [
+      {
+        price_data: {
+          currency: 'gbp',
+          unit_amount: card,
+          product_data: {
+            name: `Club MO/GK${session.age_group ? ` (${session.age_group})` : ''} - ${formatDateLong(session.date)}`,
+            description: `For ${from.children.name}. Swapped from ${formatTime(from.sessions.start_time)}, £${((swapCredit + balanceCredit) / 100).toFixed(2)} credit applied.`,
+          },
+        },
+        quantity: 1,
+      },
+      {
+        price_data: {
+          currency: 'gbp',
+          unit_amount: feePence,
+          product_data: {
+            name: 'Booking fee',
+            description: 'Covers card processing. Non-refundable on cancellation.',
+          },
+        },
+        quantity: 1,
+      },
+    ],
+    success_url: `${siteUrl}/bookings?paid=1`,
+    cancel_url: `${back}?error=Payment+cancelled`,
+    expires_at: Math.floor(Date.now() / 1000) + 60 * 30,
+    metadata: { parent_id: parent.id, swap_from_booking_id: from.id },
+  });
+
+  const { error } = await admin.rpc('start_booking_swap', {
+    ...rpcArgs,
+    p_checkout_session_id: checkout.id,
+  });
+  if (error) {
+    try { await stripe.checkout.sessions.expire(checkout.id); } catch { /* best-effort */ }
+    redirect(`${back}?error=${encodeURIComponent(swapErrorMessage(error.message))}`);
+  }
+  if (!checkout.url) redirect(`${back}?error=Could+not+start+payment`);
+
+  redirect(checkout.url);
+}
+
+function swapErrorMessage(raw: string): string {
+  if (raw.includes('session_full')) return 'This session just filled up.';
+  if (raw.includes('session_closed')) return 'This session has been closed.';
+  if (raw.includes('already_booked')) return 'This player is already booked on this session.';
+  if (raw.includes('swap_in_progress')) return 'A swap for that booking is already waiting for payment. Finish or dismiss it from My bookings.';
+  if (raw.includes('insufficient_credit') || raw.includes('swap_amount_mismatch')) return 'Your credit balance has changed. Try again.';
+  return 'The booking couldn\'t be swapped. Bookings can only be swapped more than 24 hours before both sessions.';
 }
 
 export async function joinWaitlist(formData: FormData) {

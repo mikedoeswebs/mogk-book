@@ -49,6 +49,7 @@ export default async function BookingsPage({
     credit?: string;
     dismissed?: string;
     moved?: string;
+    swapped?: string;
     trial?: string;
     trial_kept?: string;
     trial_used?: string;
@@ -170,6 +171,12 @@ export default async function BookingsPage({
       {sp.moved && (
         <Banner kind="success">
           Booking moved - we&apos;ve emailed you the new details.
+        </Banner>
+      )}
+      {sp.swapped && (
+        <Banner kind="success">
+          Booking swapped - we&apos;ve emailed you the new details. The old booking is cancelled and
+          its value has gone towards this one.
         </Banner>
       )}
       {sp.error && <Banner kind="error">{sp.error}</Banner>}

@@ -82,11 +82,30 @@ async function handleCheckoutCompleted(
     return { id: b.id, status };
   });
 
-  for (const u of updates) {
+  const swappedFrom: string[] = [];
+  for (const [i, u] of updates.entries()) {
+    const fromId = pending[i].swap_from_booking_id;
+    if (fromId) {
+      // Flips the status and cancels the old booking for credit atomically,
+      // so a retried webhook can't move the credit twice.
+      const { data: done, error } = await supabase.rpc('complete_booking_swap', {
+        p_booking_id: u.id,
+        p_status: u.status,
+        p_payment_intent_id: paymentIntentId,
+      });
+      if (error) throw error;
+      if (done) swappedFrom.push(fromId);
+      continue;
+    }
     await supabase
       .from('bookings')
       .update({ status: u.status, stripe_payment_intent_id: paymentIntentId })
       .eq('id', u.id);
+  }
+  if (swappedFrom.length > 0) {
+    const { data: freed } = await supabase
+      .from('bookings').select('session_id').in('id', swappedFrom);
+    await notifyWaitlist(supabase, (freed ?? []).map((b) => b.session_id));
   }
 
   // Reload bookings (with the new status) for the email.

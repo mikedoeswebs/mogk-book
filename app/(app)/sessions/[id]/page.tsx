@@ -5,17 +5,18 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCreditBalance, applyCredit } from '@/lib/booking/credits';
 import { bookingFeeFor } from '@/lib/booking/fees';
-import { bookingNeedsApproval, playerTooOld, sessionIsPast } from '@/lib/booking/rules';
+import { bookingNeedsApproval, canSwap, playerTooOld, sessionIsPast } from '@/lib/booking/rules';
+import { swapAmounts } from '@/lib/booking/swap';
 import { hasFreeTrial } from '@/lib/booking/trial';
 import { formatDate, formatDateWeekday, formatTime, formatPence } from '@/lib/format';
 import { AgeWarning, PlayerSelect, type AgeCheckPlayer } from '@/lib/ui/AgeCheck';
 import { ValidatedSubmit } from '../../book/ValidatedSubmit';
 import { ArrowLeft } from '@/lib/ui/Icon';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
-import type { Child, Session, WaitlistEntry } from '@/lib/db/types';
+import type { Booking, Child, Session, WaitlistEntry } from '@/lib/db/types';
 import { countSessionInSelection } from '@/lib/booking/selection';
 import { addToSelection } from '../selection-actions';
-import { createCheckoutSession, joinWaitlist, leaveWaitlist } from './actions';
+import { createCheckoutSession, joinWaitlist, leaveWaitlist, swapBooking } from './actions';
 
 export default async function SessionDetailPage({
   params,
@@ -73,12 +74,32 @@ export default async function SessionDetailPage({
   }));
   const inSelection = await countSessionInSelection(session.id);
 
-  const { data: waitlist } = await supabase
-    .from('waitlist_entries')
-    .select('*')
-    .eq('session_id', session.id)
-    .eq('parent_id', parent.id)
-    .returns<WaitlistEntry[]>();
+  const [{ data: waitlist }, { data: liveBookings }] = await Promise.all([
+    supabase
+      .from('waitlist_entries')
+      .select('*')
+      .eq('session_id', session.id)
+      .eq('parent_id', parent.id)
+      .returns<WaitlistEntry[]>(),
+    supabase
+      .from('bookings')
+      .select('*, sessions!session_id(*), children(*)')
+      .eq('parent_id', parent.id)
+      .in('status', ['pending_payment', 'awaiting_approval', 'active'])
+      .returns<(Booking & { sessions: Session; children: Child })[]>(),
+  ]);
+
+  // A player booked on a clashing session (often the fallback while waiting
+  // for this one) can swap that place across instead of paying twice.
+  const bookedHere = new Set(
+    (liveBookings ?? []).filter((b) => b.session_id === session.id).map((b) => b.child_id),
+  );
+  const swappable = (liveBookings ?? []).filter(
+    (b) =>
+      !bookedHere.has(b.child_id) &&
+      canSwap(b, b.sessions, session) &&
+      !playerTooOld(b.children, session),
+  );
 
   return (
     <div className="space-y-4">
@@ -178,6 +199,9 @@ export default async function SessionDetailPage({
                 </p>
               ) : (
                 <div className="space-y-4">
+                  {swappable.map((b) => (
+                    <SwapPanel key={b.id} booking={b} session={session} balance={balance} />
+                  ))}
                   <div className="p-4 bg-surface border border-line rounded space-y-3">
                     <div>
                       <h2 className="text-lg font-bold capitalize">Booking more than one?</h2>
@@ -239,6 +263,57 @@ export default async function SessionDetailPage({
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+function SwapPanel({
+  booking,
+  session,
+  balance,
+}: {
+  booking: Booking & { sessions: Session; children: Child };
+  session: Session;
+  balance: number;
+}) {
+  const { swapCredit, balanceCredit, card, surplus } = swapAmounts(booking, session.price_pence, balance);
+  const fee = bookingFeeFor(card);
+  const name = booking.children.name;
+
+  return (
+    <div className="p-4 bg-[var(--info-bg)] border border-[var(--info-line)] rounded space-y-3">
+      <div>
+        <h2 className="text-lg font-bold capitalize">Swap {name}&apos;s booking?</h2>
+        <p className="text-sm mt-1">
+          {name} is booked on the {formatTime(booking.sessions.start_time)} session that day, which
+          clashes with this one. Swap that place to this session and we&apos;ll cancel the{' '}
+          {formatTime(booking.sessions.start_time)} booking once the swap is complete.
+        </p>
+      </div>
+      <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 text-sm">
+        <dt className="font-bold">This session</dt><dd>{formatPence(session.price_pence)}</dd>
+        <dt className="font-bold">From your current booking</dt><dd>− {formatPence(swapCredit)}</dd>
+        {balanceCredit > 0 && (
+          <><dt className="font-bold">Credit applied</dt><dd>− {formatPence(balanceCredit)}</dd></>
+        )}
+        {card > 0 && (
+          <>
+            <dt className="font-bold">Booking fee</dt>
+            <dd>{formatPence(fee)} <span className="text-xs pl-2 text-fg-muted">(covers card processing, non-refundable)</span></dd>
+            <dt className="font-bold">Card payment</dt><dd className="font-bold">{formatPence(card + fee)}</dd>
+          </>
+        )}
+        {surplus > 0 && (
+          <><dt className="font-bold">Added to your credit</dt><dd>{formatPence(surplus)}</dd></>
+        )}
+      </dl>
+      <form action={swapBooking}>
+        <input type="hidden" name="session_id" value={session.id} />
+        <input type="hidden" name="from_booking_id" value={booking.id} />
+        <SubmitButton className="w-full" pendingLabel={card > 0 ? 'Redirecting to checkout…' : 'Swapping…'}>
+          {card > 0 ? `Swap and pay ${formatPence(card + fee)}` : 'Swap booking'}
+        </SubmitButton>
+      </form>
     </div>
   );
 }
