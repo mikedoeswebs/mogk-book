@@ -17,6 +17,7 @@ import type { Booking, Child, Session, WaitlistEntry } from '@/lib/db/types';
 import { countSessionInSelection } from '@/lib/booking/selection';
 import { addToSelection } from '../selection-actions';
 import { createCheckoutSession, joinWaitlist, leaveWaitlist, swapBooking } from './actions';
+import { dismissPendingBooking } from '../../bookings/actions';
 
 export default async function SessionDetailPage({
   params,
@@ -96,6 +97,11 @@ export default async function SessionDetailPage({
   const bookedHere = new Set(
     (liveBookings ?? []).filter((b) => b.session_id === session.id).map((b) => b.child_id),
   );
+  // An unfinished checkout holds the place until Stripe expires it (30 min),
+  // which also hides the swap panel and blocks rebooking that player here.
+  const held = (liveBookings ?? []).filter(
+    (b) => b.session_id === session.id && b.status === 'pending_payment',
+  );
   const swappable = (liveBookings ?? []).filter(
     (b) =>
       !bookedHere.has(b.child_id) &&
@@ -117,6 +123,20 @@ export default async function SessionDetailPage({
       {sp.error && (
         <p className="p-3 bg-[var(--danger-bg)] border border-[var(--danger-line)] text-[var(--danger-fg)] rounded">{sp.error}</p>
       )}
+      {held.map((b) => (
+        <div key={b.id} className="p-3 bg-[var(--warn-bg)] border border-[var(--warn-line)] text-[var(--warn-fg)] rounded flex flex-wrap items-center justify-between gap-3">
+          <p>
+            Payment for <strong>{b.children.name}</strong>&apos;s booking on this session wasn&apos;t
+            finished, so we&apos;re holding the place for 30 minutes. Dismiss it to release the place
+            and book or swap again.
+          </p>
+          <form action={dismissPendingBooking}>
+            <input type="hidden" name="id" value={b.id} />
+            <input type="hidden" name="return_to" value={`/sessions/${session.id}`} />
+            <SubmitButton pendingLabel="Dismissing…">Dismiss</SubmitButton>
+          </form>
+        </div>
+      ))}
 
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         <section className="p-4 bg-surface border border-line rounded">

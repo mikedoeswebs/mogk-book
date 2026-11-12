@@ -75,6 +75,12 @@ export async function dismissPendingBooking(formData: FormData) {
   await notifyWaitlist(admin, [booking.session_id]);
 
   revalidatePath('/bookings');
+  // The session page offers Dismiss too, so the parent can rebook or swap there.
+  const returnTo = String(formData.get('return_to') ?? '');
+  if (/^\/sessions\/[\w-]+$/.test(returnTo)) {
+    revalidatePath(returnTo);
+    redirect(returnTo);
+  }
   redirect('/bookings?dismissed=1');
 }
 

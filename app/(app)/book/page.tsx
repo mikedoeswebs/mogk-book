@@ -4,12 +4,12 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCreditBalance } from '@/lib/booking/credits';
 import { calculateBookingFeePence, allocateFeePence } from '@/lib/booking/fees';
-import { playerCanJoin, playerTooOld, sessionGenderLabel, sessionIsPast } from '@/lib/booking/rules';
+import { canSwap, playerCanJoin, playerTooOld, sessionGenderLabel, sessionIsPast } from '@/lib/booking/rules';
 import { hasFreeTrial, trialIndex } from '@/lib/booking/trial';
 import { getSelection, type SelectionItem } from '@/lib/booking/selection';
 import { formatDate, formatDateWeekday, formatTime, formatPence } from '@/lib/format';
 import { AgeWarning, PlayerSelect, type AgeCheckRow } from '@/lib/ui/AgeCheck';
-import type { Child, Session } from '@/lib/db/types';
+import type { Booking, Child, Session } from '@/lib/db/types';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
 import { confirmBookings } from './actions';
 import { ValidatedSubmit } from './ValidatedSubmit';
@@ -64,6 +64,23 @@ export default async function ReviewPage({
   ]);
 
   const sessionById = new Map((sessions ?? []).map((s) => [s.id, s]));
+
+  // The swap panel lives on the session page, so a parent who checks out from
+  // a selection never sees it. Point them back there instead of paying twice.
+  const { data: liveBookings } = await supabase
+    .from('bookings')
+    .select('*, sessions!session_id(*), children(*)')
+    .eq('parent_id', parent.id)
+    .in('status', ['pending_payment', 'awaiting_approval', 'active'])
+    .returns<(Booking & { sessions: Session; children: Child })[]>();
+  const swapFor = (session: Session) =>
+    (liveBookings ?? []).find(
+      (b) =>
+        canSwap(b, b.sessions, session) &&
+        playerCanJoin(b.children, session) &&
+        !playerTooOld(b.children, session) &&
+        !(liveBookings ?? []).some((o) => o.session_id === session.id && o.child_id === b.child_id),
+    );
 
   const { data: availability } = await supabase.rpc('get_session_availability', {
     p_session_ids: sessionIds,
@@ -212,6 +229,7 @@ export default async function ReviewPage({
                 );
               }
               const stale = !!r.staleReason;
+              const swap = stale ? undefined : swapFor(r.session);
               return (
                 <tr key={r.item.id} className={stale ? 'opacity-60' : ''}>
                   <td>
@@ -219,6 +237,15 @@ export default async function ReviewPage({
                     {r.session.age_group ? ` | ${r.session.age_group}` : ''}
                     {stale && (
                       <div className="text-xs text-[var(--warn-fg)] mt-0.5">{r.staleReason}</div>
+                    )}
+                    {swap && (
+                      <div className="text-xs text-[var(--info-fg)] mt-0.5">
+                        {swap.children.name} is already booked on the{' '}
+                        {formatTime(swap.sessions.start_time)}
+                        {swap.sessions.age_group ? ` ${swap.sessions.age_group}` : ''} session at the
+                        same time.{' '}
+                        <Link href={`/sessions/${r.session.id}`}>Swap that booking instead</Link>
+                      </div>
                     )}
                   </td>
                   <td>
