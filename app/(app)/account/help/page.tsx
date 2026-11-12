@@ -27,6 +27,7 @@ export default async function HelpPage() {
           <li><a href="#fees-credit">Booking fees and account credit</a></li>
           <li><a href="#cancelling">Cancelling a session</a></li>
           <li><a href="#moving">Moving to another session</a></li>
+          <li><a href="#swapping">Swapping to a session at the same time</a></li>
           <li><a href="#the-24-hour-rules">The 24-hour rules</a></li>
           <li><a href="#account">Managing your account</a></li>
           <li><a href="#emails">Emails you&apos;ll get from us</a></li>
@@ -80,7 +81,7 @@ export default async function HelpPage() {
         If a session is fully booked, open it from <Link href="/sessions">Sessions</Link>{' '}and choose <strong>Join waiting list</strong>, picking which player it&apos;s for. Joining is free and doesn&apos;t take any payment.
       </p>
       <p>
-        If a space opens up, for example because someone cancels, we email everyone on the waiting list at the same time. The space goes to whoever books first, so it&apos;s worth acting quickly. If the space opens within 24 hours of the session, the usual <a href="#the-24-hour-rules">late booking approval</a>{' '}applies.
+        If a space opens up, for example because someone cancels, we email everyone on the waiting list at the same time. The space goes to whoever books first, so it&apos;s worth acting quickly. If the space opens within 24 hours of the session, the usual <a href="#the-24-hour-rules">late booking approval</a>{' '}applies. If your player is already booked on another session at the same time, you can <a href="#swapping">swap that booking</a>{' '}across instead of paying again.
       </p>
       <p>
         You can see your waiting lists, and leave any you no longer need, on <Link href="/bookings">My bookings</Link>. Once your player is booked onto the session, they&apos;re taken off its waiting list automatically.
@@ -134,6 +135,22 @@ export default async function HelpPage() {
       <p>
         If your player can&apos;t make a session, you can move the booking instead of cancelling it. Open <Link href="/bookings">My bookings</Link> and click <strong>Move</strong> next to the booking. You can move to any session at the same price, as long as both sessions are at least 24 hours away. There&apos;s nothing extra to pay and no booking fee, and we&apos;ll email you the new details. For anything else, cancel for credit and book the session you want.
       </p>
+
+      <h2 id="swapping" className="text-2xl font-bold mt-8">Swapping to a session at the same time</h2>
+      <p>
+        If your player is booked on one session but would rather be on another that runs at the same time on the same day (for example, you booked a different group as a fallback while waiting for a space), you can swap the booking across rather than paying twice. Open the session you want from <Link href="/sessions">Sessions</Link>. If a swap is possible, you&apos;ll see a panel offering to swap your player&apos;s booking above the usual booking options.
+      </p>
+      <p>
+        What you paid for the current booking (not including the booking fee) goes towards the new session. If the new session costs more, your credit balance covers the difference first and anything left goes to your card, with the usual booking fee. If it costs less, the difference is added to your credit balance. The panel shows the breakdown before you confirm.
+      </p>
+      <p>
+        Once the swap is complete, the old booking is cancelled and we email you the new details. A swap is only available when:
+      </p>
+      <ul className="list-disc pl-6 space-y-1">
+        <li>the current booking is confirmed and paid for (a <a href="#free-trial">free trial session</a>{' '}can&apos;t be swapped)</li>
+        <li>both sessions are more than 24 hours away</li>
+        <li>the new session has a space available.</li>
+      </ul>
 
       <h2 id="the-24-hour-rules" className="text-2xl font-bold mt-8">The 24-hour rules</h2>
       <p>
