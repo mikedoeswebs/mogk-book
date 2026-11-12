@@ -10,6 +10,7 @@ import type { Booking, Child, Session } from '@/lib/db/types';
 import { updateChild } from '../actions';
 import { MedicalFields } from '../MedicalFields';
 import { MediaConsentField } from '../MediaConsentField';
+import { GenderField } from '../GenderField';
 
 type BookingRow = Pick<Booking, 'id' | 'status' | 'attended'> & {
   sessions: Pick<
@@ -137,6 +138,7 @@ export default async function PlayerPage({
             <span className="block mb-1">Date of birth</span>
             <input type="date" name="dob" required defaultValue={child.dob ?? ''} className="w-full" />
           </label>
+          <GenderField value={child.gender} />
           <MedicalFields notes={child.notes} consentAt={child.medical_consent_at} />
           <MediaConsentField consentAt={child.media_consent_at} />
           <SubmitButton pendingLabel="Saving…">Save changes</SubmitButton>

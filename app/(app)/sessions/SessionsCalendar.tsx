@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft, ArrowRight } from '@/lib/ui/Icon';
 import type { Session } from '@/lib/db/types';
+import { sessionGenderLabel } from '@/lib/booking/rules';
 import { PendingButton } from '@/lib/ui/PendingButton';
 import { addToSelection } from './selection-actions';
 
@@ -339,6 +340,7 @@ function DayPopover({
                   <div className="font-medium text-sm">
                     {formatTime(s.start_time)}–{formatTime(s.end_time)}
                     {s.age_group && <span className="text-fg-muted"> | {s.age_group}</span>}
+                    {sessionGenderLabel(s) && <span className="text-fg-muted"> | {sessionGenderLabel(s)}</span>}
                   </div>
                   <div className="text-xs text-fg-muted">
                     {formatPence(s.price_pence)} |{' '}

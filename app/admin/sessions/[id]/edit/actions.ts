@@ -16,6 +16,7 @@ export async function updateSession(formData: FormData) {
   const start_time = String(formData.get('start_time') ?? '');
   const end_time = String(formData.get('end_time') ?? '');
   const age_group = String(formData.get('age_group') ?? '').trim() || null;
+  const gender = String(formData.get('gender') ?? 'mixed');
   const capacity = Number(formData.get('capacity'));
   const price = Number(formData.get('price'));
   const notes = String(formData.get('notes') ?? '').trim() || null;
@@ -27,6 +28,24 @@ export async function updateSession(formData: FormData) {
   }
 
   const supabase = createSupabaseAdminClient();
+
+  // Making a session girls- or boys-only can't strand players already on it.
+  if (gender !== 'mixed') {
+    const { count } = await supabase
+      .from('bookings')
+      .select('id, children!inner(gender)', { count: 'exact', head: true })
+      .eq('session_id', id)
+      .in('status', ['pending_payment', 'awaiting_approval', 'active'])
+      .neq('children.gender', gender);
+    if (count) {
+      redirect(
+        `/admin/sessions/${id}/edit?error=${encodeURIComponent(
+          `${count} booked player${count === 1 ? ' doesn\'t' : 's don\'t'} match the new setting. Move or cancel ${count === 1 ? 'that booking' : 'those bookings'} first.`,
+        )}`,
+      );
+    }
+  }
+
   const { data: before } = await supabase
     .from('sessions')
     .select('capacity')
@@ -40,6 +59,7 @@ export async function updateSession(formData: FormData) {
       start_time,
       end_time,
       age_group,
+      gender,
       capacity,
       price_pence: Math.round(price * 100),
       notes,

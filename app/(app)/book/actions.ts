@@ -8,7 +8,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/client';
 import { getCreditBalance } from '@/lib/booking/credits';
 import { calculateBookingFeePence, allocateFeePence } from '@/lib/booking/fees';
-import { bookingNeedsApproval, playerTooOld, playerTooOldMessage, sessionIsPast } from '@/lib/booking/rules';
+import { bookingNeedsApproval, playerCanJoin, playerCantJoinMessage, playerTooOld, playerTooOldMessage, sessionIsPast } from '@/lib/booking/rules';
 import { clearWaitlistForBookings } from '@/lib/booking/waitlist';
 import { bookedPlayerKeys } from '@/lib/booking/same-player';
 import { hasFreeTrial, markFreeTrialBooking, trialIndex } from '@/lib/booking/trial';
@@ -102,6 +102,9 @@ export async function confirmBookings(formData: FormData) {
     const child = (children ?? []).find((c) => c.id === item.childId)!;
     if (playerTooOld(child, session!)) {
       redirect(`/book?error=${encodeURIComponent(playerTooOldMessage(child, session!))}`);
+    }
+    if (!playerCanJoin(child, session!)) {
+      redirect(`/book?error=${encodeURIComponent(playerCantJoinMessage(child, session!))}`);
     }
     remainingBySession.set(item.sessionId, remaining - 1);
     valid.push({ item, session: session! });

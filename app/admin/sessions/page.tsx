@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require-user';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { formatTime, formatPence } from '@/lib/format';
-import { sessionIsPast } from '@/lib/booking/rules';
+import { sessionIsPast, sessionGenderLabel } from '@/lib/booking/rules';
 import { ArrowLeft, ArrowRight } from '@/lib/ui/Icon';
 import type { Session } from '@/lib/db/types';
 
@@ -270,6 +270,7 @@ function SlotRow({
         {sessions.map((s) => (
           <div key={s.id} className={s.status === 'cancelled' ? 'line-through text-fg-muted' : ''}>
             {s.age_group ?? '-'}
+            {s.gender !== 'mixed' && <span className="text-fg-muted"> ({sessionGenderLabel(s)})</span>}
           </div>
         ))}
       </td>

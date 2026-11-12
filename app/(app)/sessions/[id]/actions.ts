@@ -8,7 +8,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/client';
 import { applyCredit, getCreditBalance } from '@/lib/booking/credits';
 import { bookingFeeFor } from '@/lib/booking/fees';
-import { bookingNeedsApproval, canSwap, playerTooOld, playerTooOldMessage, sessionIsPast } from '@/lib/booking/rules';
+import { bookingNeedsApproval, canSwap, playerCanJoin, playerCantJoinMessage, playerTooOld, playerTooOldMessage, sessionIsPast } from '@/lib/booking/rules';
 import {
   sendBookingConfirmation,
   sendBookingAwaitingApproval,
@@ -56,6 +56,9 @@ export async function createCheckoutSession(formData: FormData) {
   if (!child) redirect(`/sessions/${sessionId}?error=Invalid+player+selected`);
   if (playerTooOld(child, session)) {
     redirect(`/sessions/${sessionId}?error=${encodeURIComponent(playerTooOldMessage(child, session))}`);
+  }
+  if (!playerCanJoin(child, session)) {
+    redirect(`/sessions/${sessionId}?error=${encodeURIComponent(playerCantJoinMessage(child, session))}`);
   }
 
   const admin = createSupabaseAdminClient();
@@ -207,6 +210,9 @@ export async function swapBooking(formData: FormData) {
   }
   if (playerTooOld(from.children, session)) {
     redirect(`${back}?error=${encodeURIComponent(playerTooOldMessage(from.children, session))}`);
+  }
+  if (!playerCanJoin(from.children, session)) {
+    redirect(`${back}?error=${encodeURIComponent(playerCantJoinMessage(from.children, session))}`);
   }
 
   const { swapCredit, balanceCredit, card } = swapAmounts(from, session.price_pence, balance);

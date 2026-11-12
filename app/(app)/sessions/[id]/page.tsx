@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCreditBalance, applyCredit } from '@/lib/booking/credits';
 import { bookingFeeFor } from '@/lib/booking/fees';
-import { bookingNeedsApproval, canSwap, playerTooOld, sessionIsPast } from '@/lib/booking/rules';
+import { bookingNeedsApproval, canSwap, playerCanJoin, playerTooOld, sessionGenderLabel, sessionIsPast } from '@/lib/booking/rules';
 import { swapAmounts } from '@/lib/booking/swap';
 import { hasFreeTrial } from '@/lib/booking/trial';
 import { formatDate, formatDateWeekday, formatTime, formatPence } from '@/lib/format';
@@ -67,7 +67,9 @@ export default async function SessionDetailPage({
   const isPast = sessionIsPast(session);
   const sessionClosed = session.status !== 'open';
   const noChildren = !children || children.length === 0;
-  const players = (children ?? []).map((c) => ({
+  const genderLabel = sessionGenderLabel(session);
+  const eligible = (children ?? []).filter((c) => playerCanJoin(c, session));
+  const players = eligible.map((c) => ({
     id: c.id,
     name: c.name,
     tooOld: playerTooOld(c, session),
@@ -98,6 +100,7 @@ export default async function SessionDetailPage({
     (b) =>
       !bookedHere.has(b.child_id) &&
       canSwap(b, b.sessions, session) &&
+      playerCanJoin(b.children, session) &&
       !playerTooOld(b.children, session),
   );
 
@@ -123,6 +126,7 @@ export default async function SessionDetailPage({
             <dt className="font-bold">Location</dt><dd>{session.location}</dd>
             <dt className="font-bold">{session.coach_name.includes(',') ? 'Coaches' : 'Coach'}</dt><dd>{session.coach_name}</dd>
             {session.age_group && (<><dt className="font-bold">Group</dt><dd>{session.age_group}</dd></>)}
+            {genderLabel && (<><dt className="font-bold">Who can book</dt><dd>{genderLabel}</dd></>)}
             <dt className="font-bold">Price</dt><dd>{formatPence(session.price_pence)}{freeTrial && ' (free with your trial)'}</dd>
             <dt className="font-bold">Availability</dt><dd>{remaining > 0 ? `${remaining} of ${session.capacity} spots left` : 'Sold out'}</dd>
             {session.notes && (<><dt>Notes</dt><dd>{session.notes}</dd></>)}
@@ -187,6 +191,8 @@ export default async function SessionDetailPage({
 
               {sessionClosed ? (
                 <p>This session is closed.</p>
+              ) : !noChildren && players.length === 0 ? (
+                <p>This session is {genderLabel?.toLowerCase()}, so none of your players can book it.</p>
               ) : remaining <= 0 ? (
                 <WaitlistPanel
                   sessionId={session.id}

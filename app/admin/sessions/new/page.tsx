@@ -67,6 +67,14 @@ export default async function NewSessionPage({
           <span className="block mb-1">Group</span>
           <input type="text" name="age_group" placeholder="e.g. Main, Academy" required className="w-full" />
         </label>
+        <label className="block">
+          <span className="block mb-1">Who can book</span>
+          <select name="gender" defaultValue={'mixed'} className="w-full">
+            <option value="mixed">Mixed</option>
+            <option value="female">Girls only</option>
+            <option value="male">Boys only</option>
+          </select>
+        </label>
         <div className="flex gap-3">
           <label className="block flex-1">
             <span className="block mb-1">Capacity</span>

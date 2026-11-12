@@ -12,6 +12,7 @@ export async function createSession(formData: FormData) {
   const start_time = String(formData.get('start_time') ?? '');
   const end_time = String(formData.get('end_time') ?? '');
   const age_group = String(formData.get('age_group') ?? '').trim() || null;
+  const gender = String(formData.get('gender') ?? 'mixed');
   const capacity = Number(formData.get('capacity'));
   const price = Number(formData.get('price'));
   const notes = String(formData.get('notes') ?? '').trim() || null;
@@ -52,6 +53,7 @@ export async function createSession(formData: FormData) {
       end_time,
       coach_name: firstCoach!.name,
       age_group,
+      gender,
       capacity,
       price_pence: Math.round(price * 100),
       notes,

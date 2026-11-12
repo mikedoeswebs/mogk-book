@@ -1,6 +1,7 @@
 import { sendEmail } from './client';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import type { Booking, Session, Parent, Child } from '@/lib/db/types';
+import { sessionGenderLabel } from '@/lib/booking/rules';
 
 type EmailContext = {
   booking: Booking;
@@ -14,7 +15,8 @@ async function send(to: string, subject: string, text: string, html: string) {
 }
 
 function sessionLine(session: Session) {
-  return `${formatDate(session.date)} at ${formatTime(session.start_time)}–${formatTime(session.end_time)} ${session.age_group ? ` (${session.age_group})` : ''}`;
+  const group = [session.age_group, sessionGenderLabel(session)].filter(Boolean).join(', ');
+  return `${formatDate(session.date)} at ${formatTime(session.start_time)}–${formatTime(session.end_time)} ${group ? ` (${group})` : ''}`;
 }
 
 const PAYMENT_METHOD_LABEL: Record<string, string> = {

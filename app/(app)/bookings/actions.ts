@@ -14,7 +14,7 @@ import {
 } from '@/lib/email/send';
 import { getStripe } from '@/lib/stripe/client';
 import { clearWaitlistForBookings, notifyWaitlist } from '@/lib/booking/waitlist';
-import { isParentMoveTarget, parentCanMoveBooking, playerTooOld } from '@/lib/booking/rules';
+import { isParentMoveTarget, parentCanMoveBooking, playerCanJoin, playerCantJoinMessage, playerTooOld } from '@/lib/booking/rules';
 import type { Booking, Session, Parent, Child } from '@/lib/db/types';
 
 type FullBooking = Booking & {
@@ -217,6 +217,9 @@ export async function moveBooking(formData: FormData) {
   }
   if (playerTooOld(pre.children, target)) {
     redirect(`${back}?error=${encodeURIComponent(`${pre.children.name} is over the age limit on that date.`)}`);
+  }
+  if (!playerCanJoin(pre.children, target)) {
+    redirect(`${back}?error=${encodeURIComponent(playerCantJoinMessage(pre.children, target))}`);
   }
 
   const { error } = await admin.rpc('admin_move_booking', {

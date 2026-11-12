@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireParent } from '@/lib/auth/require-parent';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { isParentMoveTarget, parentCanMoveBooking, playerTooOld } from '@/lib/booking/rules';
+import { isParentMoveTarget, parentCanMoveBooking, playerCanJoin, playerTooOld } from '@/lib/booking/rules';
 import { formatDate, formatTime } from '@/lib/format';
 import { ArrowLeft } from '@/lib/ui/Icon';
 import { SubmitButton } from '@/lib/ui/SubmitButton';
@@ -59,7 +59,8 @@ export default async function MoveBookingPage({
     (s) =>
       isParentMoveTarget(booking.sessions, s) &&
       !alreadyBooked.has(s.id) &&
-      !playerTooOld(booking.children, s),
+      !playerTooOld(booking.children, s) &&
+      playerCanJoin(booking.children, s),
   );
 
   const remaining = new Map<string, number>();

@@ -117,6 +117,29 @@ export function playerTooOldMessage(
   return `Sorry, ${child.name} is 17 or over on ${formatDateLong(session.date)}, and our sessions are for ages 16 and under.`;
 }
 
+/** Mixed sessions take anyone; girls-only and boys-only take a matching player. */
+export function playerCanJoin(
+  child: Pick<Child, 'gender'>,
+  session: Pick<Session, 'gender'>,
+): boolean {
+  return session.gender === 'mixed' || session.gender === child.gender;
+}
+
+/** 'Girls only' / 'Boys only', or null for a mixed session. */
+export function sessionGenderLabel(session: Pick<Session, 'gender'>): string | null {
+  if (session.gender === 'female') return 'Girls only';
+  if (session.gender === 'male') return 'Boys only';
+  return null;
+}
+
+/** Server-side fallback when an ineligible player gets past the form. */
+export function playerCantJoinMessage(
+  child: Pick<Child, 'name'>,
+  session: Pick<Session, 'gender'>,
+): string {
+  return `Sorry, ${child.name} can't be booked on this session as it's ${sessionGenderLabel(session)?.toLowerCase()}.`;
+}
+
 export const RULES = {
   APPROVAL_WINDOW_HOURS,
   CANCELLATION_WINDOW_HOURS,

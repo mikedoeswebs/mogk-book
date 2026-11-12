@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireParent } from '@/lib/auth/require-parent';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { sessionIsPast } from '@/lib/booking/rules';
+import { sessionGenderLabel, sessionIsPast } from '@/lib/booking/rules';
 import { hasFreeTrial } from '@/lib/booking/trial';
 import { formatDate, formatTime, formatPence } from '@/lib/format';
 import { ArrowLeft, ArrowRight } from '@/lib/ui/Icon';
@@ -321,7 +321,7 @@ function DateGroup({
             <td>
               {formatTime(s.start_time)}–{formatTime(s.end_time)}
             </td>
-            <td>{s.age_group ?? '-'}</td>
+            <td>{[s.age_group, sessionGenderLabel(s)].filter(Boolean).join(' | ') || '-'}</td>
             <td>{formatPence(s.price_pence)}</td>
             <td>
               {past
@@ -402,6 +402,7 @@ function DateGroupMobile({
               </div>
               <p className="text-xs text-fg-muted mt-0.5">
                 {s.age_group ? `${s.age_group} - ` : ''}
+                {sessionGenderLabel(s) ? `${sessionGenderLabel(s)} - ` : ''}
                 {availability}
               </p>
               {!past && !bookable && (

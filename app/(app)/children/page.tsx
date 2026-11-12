@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { addChild, deleteChild } from './actions';
 import { MedicalFields } from './MedicalFields';
 import { MediaConsentField } from './MediaConsentField';
+import { GenderField } from './GenderField';
 
 export default async function ChildrenPage({
   searchParams,
@@ -72,6 +73,7 @@ export default async function ChildrenPage({
             <span className="block mb-1">Date of birth</span>
             <input type="date" name="dob" required className="w-full" />
           </label>
+          <GenderField />
           <MedicalFields />
           <MediaConsentField />
           <SubmitButton pendingLabel="Adding…">Add player</SubmitButton>

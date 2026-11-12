@@ -13,6 +13,11 @@ export type CancellationOutcome =
 
 export type SessionStatus = 'open' | 'cancelled';
 
+export type PlayerGender = 'male' | 'female';
+
+/** Who a session is for; see migration 031. */
+export type SessionGender = 'mixed' | PlayerGender;
+
 export type CreditReason =
   | 'cancellation_refund'
   | 'booking_applied'
@@ -52,6 +57,7 @@ export interface Child {
   parent_id: string;
   name: string;
   dob: string | null;
+  gender: PlayerGender;
   position: string | null;
   notes: string | null;
   /** When the parent consented to us holding `notes` (health information). */
@@ -78,6 +84,7 @@ export interface Session {
   end_time: string;
   coach_name: string;
   age_group: string | null;
+  gender: SessionGender;
   capacity: number;
   price_pence: number;
   status: SessionStatus;

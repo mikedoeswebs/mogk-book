@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCreditBalance } from '@/lib/booking/credits';
 import { calculateBookingFeePence, allocateFeePence } from '@/lib/booking/fees';
-import { playerTooOld, sessionIsPast } from '@/lib/booking/rules';
+import { playerCanJoin, playerTooOld, sessionGenderLabel, sessionIsPast } from '@/lib/booking/rules';
 import { hasFreeTrial, trialIndex } from '@/lib/booking/trial';
 import { getSelection, type SelectionItem } from '@/lib/booking/selection';
 import { formatDate, formatDateWeekday, formatTime, formatPence } from '@/lib/format';
@@ -90,6 +90,9 @@ export default async function ReviewPage({
     else if (session.status !== 'open') staleReason = 'Session cancelled';
     else if (sessionIsPast(session)) staleReason = 'Session has passed';
     else if (remainingSoFar <= 0) staleReason = 'Session just filled up';
+    else if (!(children ?? []).some((c) => playerCanJoin(c, session))) {
+      staleReason = `${sessionGenderLabel(session)}: none of your players can book this`;
+    }
     // Each non-stale row consumes one of this session's remaining seats for the
     // purposes of validating subsequent rows for the same session.
     if (session && !staleReason) {
@@ -227,7 +230,7 @@ export default async function ReviewPage({
                         defaultValue={r.item.childId ?? ''}
                         placeholder="Choose a player…"
                         className="w-full"
-                        players={(children ?? []).map((c) => ({
+                        players={(children ?? []).filter((c) => playerCanJoin(c, r.session!)).map((c) => ({
                           id: c.id,
                           name: c.name,
                           tooOld: !!tooOldIdsByRow.get(`child_${r.item.id}`)?.has(c.id),

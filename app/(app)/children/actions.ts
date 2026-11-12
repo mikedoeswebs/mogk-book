@@ -14,6 +14,7 @@ function readPlayerForm(formData: FormData) {
   return {
     name: String(formData.get('name') ?? '').trim(),
     dob: String(formData.get('dob') ?? '').trim(),
+    gender: String(formData.get('gender') ?? ''),
     notes: String(formData.get('notes') ?? '').trim() || null,
     consent: formData.get('medical_consent') === 'on',
     mediaConsent: formData.get('media_consent') === 'on',
@@ -23,6 +24,7 @@ function readPlayerForm(formData: FormData) {
 function playerFormError(f: ReturnType<typeof readPlayerForm>): string | null {
   if (!f.name) return 'Name required';
   if (!f.dob || !/^\d{4}-\d{2}-\d{2}$/.test(f.dob)) return 'Date of birth required';
+  if (f.gender !== 'male' && f.gender !== 'female') return 'Please choose boy or girl';
   return null;
 }
 
@@ -37,6 +39,7 @@ export async function addChild(formData: FormData) {
     parent_id: parent.id,
     name: f.name,
     dob: f.dob,
+    gender: f.gender,
     notes: f.notes,
     medical_consent_at: f.notes ? new Date().toISOString() : null,
     media_consent_at: f.mediaConsent ? new Date().toISOString() : null,
@@ -85,6 +88,7 @@ export async function updateChild(formData: FormData) {
     .update({
       name: f.name,
       dob: f.dob,
+      gender: f.gender,
       notes: f.notes,
       medical_consent_at: medicalConsentAt,
       media_consent_at: mediaConsentAt,
