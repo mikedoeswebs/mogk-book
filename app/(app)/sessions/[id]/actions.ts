@@ -272,7 +272,7 @@ export async function swapBooking(formData: FormData) {
       },
     ],
     success_url: `${siteUrl}/bookings?paid=1`,
-    cancel_url: `${back}?error=Payment+cancelled`,
+    cancel_url: `${siteUrl}${back}?error=Payment+cancelled`,
     expires_at: Math.floor(Date.now() / 1000) + 60 * 30,
     metadata: { parent_id: parent.id, swap_from_booking_id: from.id },
   });
